@@ -29,6 +29,7 @@
   .masthead { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; row-gap: 10px; margin-bottom: 22px; padding-bottom: 16px; border-bottom: 1px solid var(--ink); }
   .masthead h1 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
   .masthead .sub { font-size: 12px; color: var(--ink-faint); font-family: var(--mono); }
+  .masthead .btn-group { display: flex; gap: 8px; align-items: center; }
 
   .banner { font-size: 12px; padding: 8px 12px; border-radius: 4px; margin-bottom: 16px; background: var(--accent-soft); color: var(--accent); }
 
@@ -83,18 +84,29 @@
 
   .cal-header { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 14px; }
   .cal-header .cal-title { font-size: 15px; font-weight: 600; min-width: 110px; text-align: center; }
-  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
   .cal-dow { font-size: 11px; color: var(--ink-faint); text-align: center; padding: 4px 0; }
-  .cal-cell { min-height: 62px; border: 1px solid var(--line); border-radius: 4px; padding: 5px 6px; cursor: pointer; background: var(--paper-raised); }
+  .cal-dow.sun { color: var(--down); }
+  .cal-dow.sat { color: #2563a8; }
+  .cal-cell { height: 76px; border: 1px solid var(--line); border-radius: 4px; padding: 5px 4px; cursor: pointer; background: var(--paper-raised); display: flex; flex-direction: column; align-items: center; overflow: hidden; }
   .cal-cell.empty { border: none; background: none; cursor: default; }
   .cal-cell:hover:not(.empty) { border-color: var(--accent); }
   .cal-cell.has-log { background: var(--accent-tint); }
   .cal-cell.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
   .cal-cell.today .cal-daynum { color: var(--accent); font-weight: 700; }
-  .cal-daynum { font-size: 12px; font-family: var(--mono); color: var(--ink-soft); }
-  .cal-pay { font-size: 11px; font-family: var(--mono); color: var(--accent); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cal-daynum { font-size: 11px; font-family: var(--mono); color: var(--ink-soft); margin-bottom: 4px; }
+  .cal-daynum.sun { color: var(--down); }
+  .cal-daynum.sat { color: #2563a8; }
+  .cal-work-badge { font-size: 12px; font-weight: 700; font-family: var(--mono); color: #fff; background: #d97a1f; border-radius: 4px; padding: 2px 8px; white-space: nowrap; }
+  .cal-work-badge.sat { background: #2563a8; }
+  .cal-pay { font-size: 10px; font-family: var(--mono); color: var(--ink-soft); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .cal-month-summary { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 14px; }
+  .cal-month-summary .item { flex: 1; background: var(--paper-raised); padding: 12px 14px; }
+  .cal-month-summary .item .lbl { font-size: 11px; color: var(--ink-faint); margin-bottom: 4px; }
+  .cal-month-summary .item .val { font-family: var(--mono); font-size: 16px; font-weight: 600; }
   .cal-detail { margin-top: 18px; }
   .cal-detail h3 { font-size: 13px; font-weight: 600; margin: 0 0 10px; }
+  .money.masked { letter-spacing: 1px; }
 
   .pay-badge { display: inline-block; font-size: 11px; font-family: var(--mono); padding: 2px 7px; border-radius: 3px; background: var(--line-soft); color: var(--ink-soft); white-space: nowrap; }
   .pay-badge.daily { background: var(--accent-soft); color: var(--accent); }
@@ -141,7 +153,10 @@
       <h1>급여 계산기</h1>
       <div class="sub" id="mode-sub"></div>
     </div>
-    <button class="ghost-btn" id="logout-btn" style="display:none;">로그아웃</button>
+    <div class="btn-group">
+      <button class="ghost-btn" id="toggle-amounts-btn">금액 가리기</button>
+      <button class="ghost-btn" id="logout-btn" style="display:none;">로그아웃</button>
+    </div>
   </div>
 
   <div class="banner" id="local-banner" style="display:none;">이 브라우저에만 저장되는 로컬 모드예요. 다른 기기와는 데이터가 공유되지 않아요.</div>
@@ -215,6 +230,11 @@
     </div>
     <div class="cal-grid" id="cal-grid"></div>
 
+    <div class="cal-month-summary">
+      <div class="item"><div class="lbl">이 달 근무량</div><div class="val" id="cal-month-work">0</div></div>
+      <div class="item"><div class="lbl">이 달 예상 급여</div><div class="val" id="cal-month-pay">0원</div></div>
+    </div>
+
     <div class="cal-detail form-card" id="cal-detail">
       <h3 id="cal-detail-title">날짜를 선택해 주세요</h3>
       <div class="table-wrap" style="margin-bottom:12px;">
@@ -279,6 +299,9 @@ let state = {
   workLogs: []
 };
 
+let amountsHidden = false;
+try { amountsHidden = localStorage.getItem('salary_amounts_hidden') === '1'; } catch (e) {}
+
 function showToast(message, type = 'info', duration = 4000) {
   const container = document.getElementById('toast-container');
   const el = document.createElement('div');
@@ -289,7 +312,10 @@ function showToast(message, type = 'info', duration = 4000) {
 }
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
-function fmtWon(n) { return Math.round(n || 0).toLocaleString('ko-KR') + '원'; }
+function fmtWon(n) {
+  if (amountsHidden) return '＊＊＊＊＊원';
+  return Math.round(n || 0).toLocaleString('ko-KR') + '원';
+}
 
 // ---------- 계산 로직 ----------
 function logPayType(log) { return log.payType === 'daily' ? 'daily' : 'hourly'; }
@@ -405,8 +431,9 @@ function updateEntryFormLabel(rowName, lblId, inputId) {
   const lbl = document.getElementById(lblId);
   const input = document.getElementById(inputId);
   lbl.textContent = isDaily ? '근무일수' : '정규 근무시간';
-  input.placeholder = isDaily ? '예: 0.5 (반일)' : '예: 8';
+  input.placeholder = isDaily ? '예: 1 (하루)' : '예: 8';
   input.step = isDaily ? '0.1' : '0.5';
+  if (isDaily && input.value === '') input.value = '1';
 }
 
 function renderLogsTable() {
@@ -508,26 +535,38 @@ function renderCalendar() {
   const todayStr = dateStr(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
 
   const dowNames = ['일', '월', '화', '수', '목', '금', '토'];
-  let html = dowNames.map(d => `<div class="cal-dow">${d}</div>`).join('');
+  let html = dowNames.map((d, i) => `<div class="cal-dow${i === 0 ? ' sun' : i === 6 ? ' sat' : ''}">${d}</div>`).join('');
 
   for (let i = 0; i < firstWeekday; i++) html += `<div class="cal-cell empty"></div>`;
+
+  let monthWorkTotal = 0, monthPayTotal = 0;
 
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = dateStr(y, m, d);
     const logs = logsByDate[ds] || [];
+    const dow = new Date(y, m, d).getDay();
+    const dowClass = dow === 0 ? ' sun' : dow === 6 ? ' sat' : '';
     let classes = 'cal-cell';
     if (logs.length > 0) classes += ' has-log';
     if (ds === todayStr) classes += ' today';
     if (ds === selectedDate) classes += ' selected';
+
+    let badgeLine = '';
     let payLine = '';
     if (logs.length > 0) {
+      const workAmount = logs.reduce((sum, log) => sum + Number(log.regularHours || 0) + Number(log.otHours || 0), 0);
       const total = logs.reduce((sum, log) => sum + computeLog(log).total, 0);
+      monthWorkTotal += workAmount;
+      monthPayTotal += total;
+      badgeLine = `<div class="cal-work-badge${dow === 6 ? ' sat' : ''}">${workAmount}</div>`;
       payLine = `<div class="cal-pay">${fmtWon(total)}</div>`;
     }
-    html += `<div class="${classes}" data-date="${ds}"><div class="cal-daynum">${d}</div>${payLine}</div>`;
+    html += `<div class="${classes}" data-date="${ds}"><div class="cal-daynum${dowClass}">${d}</div>${badgeLine}${payLine}</div>`;
   }
 
   document.getElementById('cal-grid').innerHTML = html;
+  document.getElementById('cal-month-work').textContent = monthWorkTotal.toFixed(2).replace(/\.?0+$/, '') || '0';
+  document.getElementById('cal-month-pay').textContent = fmtWon(monthPayTotal);
 
   document.querySelectorAll('.cal-cell:not(.empty)').forEach(cell => {
     cell.addEventListener('click', () => {
@@ -730,6 +769,20 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
   location.reload();
 });
 
+function applyAmountsHiddenLabel() {
+  document.getElementById('toggle-amounts-btn').textContent = amountsHidden ? '금액 보이기' : '금액 가리기';
+}
+
+document.getElementById('toggle-amounts-btn').addEventListener('click', () => {
+  amountsHidden = !amountsHidden;
+  try { localStorage.setItem('salary_amounts_hidden', amountsHidden ? '1' : '0'); } catch (e) {}
+  applyAmountsHiddenLabel();
+  renderHistory();
+  renderKpis();
+  renderCalendar();
+  renderCalDetail();
+});
+
 document.getElementById('login-submit-btn').addEventListener('click', doLogin);
 document.getElementById('login-password').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
 
@@ -785,6 +838,7 @@ async function startApp() {
   document.getElementById('app').style.display = 'block';
   document.getElementById('logout-btn').style.display = usingSupabase ? 'inline-block' : 'none';
   document.getElementById('mode-sub').textContent = usingSupabase ? (currentUser.email || '') : '로컬 저장 모드';
+  applyAmountsHiddenLabel();
   await loadData();
   renderAll();
 }
