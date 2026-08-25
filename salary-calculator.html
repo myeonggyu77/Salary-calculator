@@ -101,6 +101,8 @@
   .cal-daynum { font-size: 11px; font-family: var(--mono); color: var(--ink-soft); margin-bottom: 4px; }
   .cal-daynum.sun { color: var(--down); }
   .cal-daynum.sat { color: #2563a8; }
+  .cal-daynum.holiday { color: var(--down); font-weight: 700; }
+  .cal-cell.holiday { background: var(--down-soft); border-color: #f0c9c9; }
   .cal-work-badge { font-size: 12px; font-weight: 700; font-family: var(--mono); color: #fff; border-radius: 4px; padding: 2px 8px; white-space: nowrap; }
   .cal-work-badge.tier-low { background: #64748b; }
   .cal-work-badge.tier-normal { background: #d97a1f; }
@@ -248,6 +250,7 @@
       <span><span class="dot" style="background:#dc2626;"></span>1일 초과 ~ 2일</span>
       <span><span class="dot" style="background:#7e22ce;"></span>2일 초과</span>
       <span><span class="dot" style="background:var(--ink-faint);"></span>휴무</span>
+      <span><span class="dot" style="background:var(--down-soft); box-shadow: inset 0 0 0 1px var(--down);"></span>공휴일/일요일</span>
     </div>
 
     <div class="cal-month-summary">
@@ -668,6 +671,47 @@ function updateMultiSelectCount() {
 function pad2(n) { return String(n).padStart(2, '0'); }
 function dateStr(y, m, d) { return `${y}-${pad2(m + 1)}-${pad2(d)}`; }
 
+// 대한민국 법정공휴일 (2025~2027, 대체공휴일 포함). 이후 연도는 필요 시 추가해 주세요.
+const KR_HOLIDAYS = {
+  '2025-01-01': '신정',
+  '2025-01-28': '설날 연휴', '2025-01-29': '설날', '2025-01-30': '설날 연휴',
+  '2025-03-01': '삼일절', '2025-03-03': '대체공휴일',
+  '2025-05-05': '어린이날·부처님오신날', '2025-05-06': '대체공휴일',
+  '2025-06-06': '현충일',
+  '2025-08-15': '광복절',
+  '2025-10-03': '개천절',
+  '2025-10-05': '추석 연휴', '2025-10-06': '추석', '2025-10-07': '추석 연휴', '2025-10-08': '대체공휴일',
+  '2025-10-09': '한글날',
+  '2025-12-25': '성탄절',
+
+  '2026-01-01': '신정',
+  '2026-02-16': '설날 연휴', '2026-02-17': '설날', '2026-02-18': '설날 연휴',
+  '2026-03-01': '삼일절', '2026-03-02': '대체공휴일',
+  '2026-05-05': '어린이날',
+  '2026-05-24': '부처님오신날', '2026-05-25': '대체공휴일',
+  '2026-06-06': '현충일',
+  '2026-08-15': '광복절', '2026-08-17': '대체공휴일',
+  '2026-09-24': '추석 연휴', '2026-09-25': '추석', '2026-09-26': '추석 연휴',
+  '2026-10-03': '개천절', '2026-10-05': '대체공휴일',
+  '2026-10-09': '한글날',
+  '2026-12-25': '성탄절',
+
+  '2027-01-01': '신정',
+  '2027-02-06': '설날 연휴', '2027-02-07': '설날', '2027-02-08': '설날 연휴', '2027-02-09': '대체공휴일',
+  '2027-03-01': '삼일절',
+  '2027-05-01': '노동절',
+  '2027-05-05': '어린이날',
+  '2027-05-13': '부처님오신날',
+  '2027-06-06': '현충일',
+  '2027-08-15': '광복절',
+  '2027-09-14': '추석 연휴', '2027-09-15': '추석', '2027-09-16': '추석 연휴',
+  '2027-10-03': '개천절',
+  '2027-10-09': '한글날',
+  '2027-12-25': '성탄절'
+};
+
+function krHoliday(ds) { return KR_HOLIDAYS[ds] || null; }
+
 function renderCalendar() {
   const y = calendarDate.getFullYear();
   const m = calendarDate.getMonth();
@@ -694,8 +738,10 @@ function renderCalendar() {
     const ds = dateStr(y, m, d);
     const logs = logsByDate[ds] || [];
     const dow = new Date(y, m, d).getDay();
-    const dowClass = dow === 0 ? ' sun' : dow === 6 ? ' sat' : '';
+    const holidayName = krHoliday(ds);
+    const dowClass = holidayName ? ' holiday' : dow === 0 ? ' sun' : dow === 6 ? ' sat' : '';
     let classes = 'cal-cell';
+    if (holidayName) classes += ' holiday';
     if (logs.length > 0) classes += ' has-log';
     if (ds === todayStr) classes += ' today';
     if (ds === selectedDate) classes += ' selected';
@@ -775,7 +821,8 @@ function renderCalDetail() {
 
   const d = new Date(selectedDate + 'T00:00:00');
   const dowNames = ['일', '월', '화', '수', '목', '금', '토'];
-  titleEl.textContent = `${d.getMonth() + 1}월 ${d.getDate()}일 (${dowNames[d.getDay()]})`;
+  const holidayName = krHoliday(selectedDate);
+  titleEl.textContent = `${d.getMonth() + 1}월 ${d.getDate()}일 (${dowNames[d.getDay()]})${holidayName ? ' · ' + holidayName : ''}`;
   addBtn.disabled = false;
 
   const logs = state.workLogs.filter(l => l.date === selectedDate);
