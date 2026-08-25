@@ -253,6 +253,7 @@
         <span class="hint" id="cal-multiselect-count">0개 선택됨</span>
         <button class="ghost-btn" id="cal-multiselect-clear">선택 해제</button>
         <button class="primary-btn" id="cal-multiselect-apply">선택한 날짜에 등록</button>
+        <button class="ghost-btn" id="cal-multiselect-delete" style="color:#b3392f; border-color:#b3392f;">선택한 날짜 삭제</button>
       </div>
     </div>
 
@@ -1021,6 +1022,22 @@ document.getElementById('cal-multiselect-apply').addEventListener('click', () =>
   bulkTargetDates = Array.from(multiSelectedDates).sort();
   renderCalDetail();
   openCalModal();
+});
+
+document.getElementById('cal-multiselect-delete').addEventListener('click', () => {
+  if (multiSelectedDates.size === 0) { showToast('선택된 날짜가 없어요.', 'error'); return; }
+  const targetDates = new Set(multiSelectedDates);
+  const targetCount = state.workLogs.filter(l => targetDates.has(l.date)).length;
+  if (targetCount === 0) { showToast('선택한 날짜에 등록된 근무 기록이 없어요.', 'error'); return; }
+  if (!confirm(`선택한 ${targetDates.size}개 날짜의 근무 기록 ${targetCount}건을 삭제할까요?`)) return;
+
+  state.workLogs = state.workLogs.filter(l => !targetDates.has(l.date));
+  scheduleSave();
+  renderLogsTable();
+  renderKpis();
+  renderDashboard();
+  showToast(`${targetCount}건의 근무 기록을 삭제했어요.`, 'success');
+  exitMultiSelectMode();
 });
 
 document.getElementById('cal-add-btn').addEventListener('click', () => {
