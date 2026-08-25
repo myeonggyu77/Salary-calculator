@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>급여 계산기</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
     --ink: #1a2420;
@@ -199,60 +198,11 @@
 
   <div class="tabs">
     <button class="tab active" data-tab="calendar">달력</button>
-    <button class="tab" data-tab="logs">근무등록·급여산출</button>
+    <button class="tab" data-tab="logs">급여정산</button>
     <button class="tab" data-tab="dashboard">급여현황</button>
   </div>
 
   <div class="panel" id="panel-logs">
-    <div class="form-card">
-      <h3>근무 등록</h3>
-      <div class="field">
-        <div class="field-lbl">급여 방식</div>
-        <div class="radio-row" id="log-pay-type-row">
-          <label><input type="radio" name="log-pay-type" value="hourly" checked> 시급제</label>
-          <label><input type="radio" name="log-pay-type" value="daily"> 일급제</label>
-        </div>
-      </div>
-      <div class="form-grid">
-        <div class="field"><div class="field-lbl">근무일</div><input type="date" id="log-date"></div>
-        <div class="field"><div class="field-lbl" id="log-rate-lbl">시급 (원)</div><input type="number" id="log-rate" min="0" step="10" placeholder="예: 10030"></div>
-        <div class="field" id="log-ot-multiplier-field"><div class="field-lbl">연장 할증률</div><input type="number" id="log-ot-multiplier" min="1" step="0.1" value="1.5"></div>
-      </div>
-      <div class="form-grid">
-        <div class="field"><div class="field-lbl" id="log-regular-lbl">정규 근무시간</div>
-          <input type="number" id="log-regular-hours" min="0" step="0.5" placeholder="예: 8">
-          <select id="log-daily-status" style="display:none;">
-            <option value="1">출근</option>
-            <option value="0.5">반일</option>
-            <option value="off">휴무</option>
-          </select>
-        </div>
-        <div class="field"><div class="field-lbl" id="log-ot-lbl">추가(연장) 근무시간</div>
-          <input type="number" id="log-ot-hours" min="0" step="0.5" placeholder="예: 2">
-          <select id="log-ot-daily" style="display:none;">
-            <option value="0">없음</option>
-            <option value="0.3">0.3</option>
-            <option value="0.4">0.4</option>
-            <option value="0.5">0.5</option>
-            <option value="1">1</option>
-          </select>
-        </div>
-        <div class="field"><div class="field-lbl">메모</div><input type="text" id="log-memo" placeholder="선택 입력"></div>
-      </div>
-      <div class="form-error" id="log-error" style="display:none;"></div>
-      <div class="form-actions"><button class="primary-btn" id="add-log-btn">등록</button></div>
-    </div>
-
-    <div class="form-card">
-      <h3>일괄 등록 (엑셀)</h3>
-      <div class="form-note">엑셀 양식을 내려받아 여러 날짜를 한 번에 채운 뒤, 그 파일을 업로드하면 한꺼번에 등록돼요.</div>
-      <div class="form-actions" style="justify-content:flex-start; gap:8px; flex-wrap:wrap;">
-        <button class="ghost-btn" id="download-template-btn">엑셀 양식 다운로드</button>
-        <button class="ghost-btn" id="bulk-upload-btn">엑셀 파일 업로드</button>
-        <input type="file" id="bulk-upload-input" accept=".xlsx,.xls,.csv" style="display:none;">
-      </div>
-    </div>
-
     <div class="cal-header">
       <button class="icon-btn" id="logs-prev-btn">◀</button>
       <div class="cal-title" id="logs-month-title"></div>
@@ -527,7 +477,6 @@ async function loadData() {
 
 // ---------- 렌더링 ----------
 function renderAll() {
-  updateEntryForm('log');
   updateEntryForm('cal');
   renderLogsTable();
   renderKpis();
@@ -537,7 +486,6 @@ function renderAll() {
 }
 
 const FORM_SCOPES = {
-  log: { radioName: 'log-pay-type', regularLbl: 'log-regular-lbl', regularInput: 'log-regular-hours', dailyStatusInput: 'log-daily-status', otLbl: 'log-ot-lbl', otInput: 'log-ot-hours', otDailySelect: 'log-ot-daily', rateLbl: 'log-rate-lbl', rateInput: 'log-rate', otMultField: 'log-ot-multiplier-field', otMultInput: 'log-ot-multiplier' },
   cal: { radioName: 'cal-pay-type', regularLbl: 'cal-regular-lbl', regularInput: 'cal-add-regular', dailyStatusInput: 'cal-daily-status', otLbl: 'cal-ot-lbl', otInput: 'cal-add-ot', otDailySelect: 'cal-add-ot-daily', rateLbl: 'cal-rate-lbl', rateInput: 'cal-add-rate', otMultField: 'cal-ot-multiplier-field', otMultInput: 'cal-add-ot-multiplier' }
 };
 
@@ -868,7 +816,6 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
-document.getElementById('log-pay-type-row').addEventListener('change', () => updateEntryForm('log'));
 document.getElementById('cal-pay-type-row').addEventListener('change', () => updateEntryForm('cal'));
 
 function readRegularEntry(scopeKey) {
@@ -914,148 +861,6 @@ function confirmDuplicateDates(dates) {
     : `선택한 날짜 중 ${dup.length}개(${dup.join(', ')})에는 이미 등록된 근무 기록이 있어요. 그래도 모두 등록할까요?`;
   return confirm(msg);
 }
-
-// ---------- 엑셀 일괄등록 ----------
-function downloadTemplate() {
-  const wsData = [
-    ['근무일(YYYY-MM-DD)', '급여방식(시급/일급)', '기준금액', '정규(시급:시간숫자 / 일급:출근,반일,휴무)', '연장(시급:시간숫자 / 일급:일수숫자)', '연장할증률(시급만 해당)', '메모'],
-    ['2026-08-01', '시급', 10030, 8, 0, 1.5, ''],
-    ['2026-08-02', '일급', 100000, '출근', 0, '', ''],
-    ['2026-08-03', '일급', 100000, '반일', 0, '', ''],
-    ['2026-08-04', '일급', 100000, '휴무', 0, '', '']
-  ];
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 10 }, { wch: 32 }, { wch: 28 }, { wch: 16 }, { wch: 16 }];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '근무등록');
-  XLSX.writeFile(wb, '급여계산기_근무등록_양식.xlsx');
-}
-
-function normalizeDate(v) {
-  if (v instanceof Date && !isNaN(v)) return dateStr(v.getFullYear(), v.getMonth(), v.getDate());
-  if (typeof v === 'number' && window.XLSX && XLSX.SSF) {
-    const d = XLSX.SSF.parse_date_code(v);
-    if (d) return dateStr(d.y, d.m - 1, d.d);
-  }
-  const s = String(v == null ? '' : v).trim();
-  if (!s) return null;
-  const m = s.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/);
-  if (m) return dateStr(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return null;
-}
-
-function parseBulkRow(row) {
-  const date = normalizeDate(row[0]);
-  if (!date) return null;
-
-  const payTypeRaw = String(row[1] == null ? '' : row[1]).trim();
-  let payType;
-  if (payTypeRaw.includes('일급')) payType = 'daily';
-  else if (payTypeRaw.includes('시급')) payType = 'hourly';
-  else return null;
-
-  const rate = Number(row[2]) || 0;
-  let regularHours, dayStatus;
-  if (payType === 'daily') {
-    const v = String(row[3] == null ? '' : row[3]).trim();
-    if (v.includes('휴무')) { dayStatus = 'off'; regularHours = 0; }
-    else if (v.includes('반일') || v === '0.5') { dayStatus = 'half'; regularHours = 0.5; }
-    else { dayStatus = 'work'; regularHours = Number(v) || 1; }
-  } else {
-    regularHours = Number(row[3]) || 0;
-  }
-
-  const otHours = Number(row[4]) || 0;
-  const otMultiplier = Number(row[5]) || 1.5;
-  const memo = row[6] == null ? '' : String(row[6]);
-
-  return { id: uid(), date, payType, rate, otMultiplier, regularHours, dayStatus, otHours, memo };
-}
-
-async function handleBulkUpload(file) {
-  try {
-    const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
-
-    let added = 0, skipped = 0;
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      if (!row || row.every(c => c === '' || c == null)) continue;
-      const parsed = parseBulkRow(row);
-      if (!parsed) { skipped++; continue; }
-      state.workLogs.push(parsed);
-      rememberRate(parsed.payType, parsed.rate, parsed.otMultiplier);
-      added++;
-    }
-
-    if (added > 0) {
-      scheduleSave();
-      renderAll();
-    }
-    if (added === 0 && skipped === 0) {
-      showToast('등록할 내용이 없어요.', 'error');
-    } else {
-      showToast(`일괄등록 완료: ${added}건 등록${skipped > 0 ? `, ${skipped}건은 형식 오류로 건너뜀` : ''}`, added > 0 ? 'success' : 'error');
-    }
-  } catch (e) {
-    console.error(e);
-    showToast('엑셀 파일을 읽지 못했어요: ' + e.message, 'error');
-  }
-}
-
-document.getElementById('download-template-btn').addEventListener('click', downloadTemplate);
-document.getElementById('bulk-upload-btn').addEventListener('click', () => {
-  document.getElementById('bulk-upload-input').click();
-});
-document.getElementById('bulk-upload-input').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  await handleBulkUpload(file);
-  e.target.value = '';
-});
-
-document.getElementById('add-log-btn').addEventListener('click', () => {
-  const date = document.getElementById('log-date').value;
-  const entry = readRegularEntry('log');
-  const otEntry = readOtEntry('log');
-  const rate = Number(document.getElementById('log-rate').value) || 0;
-  const otMultiplier = Number(document.getElementById('log-ot-multiplier').value) || 1.5;
-  const memo = document.getElementById('log-memo').value.trim();
-  const errorEl = document.getElementById('log-error');
-
-  if (!date) { errorEl.textContent = '근무일을 입력해 주세요.'; errorEl.style.display = 'block'; return; }
-  if (!entry.hasRegular && otEntry.raw === '') { errorEl.textContent = '정규 근무시간 또는 연장 근무시간 중 하나는 입력해 주세요.'; errorEl.style.display = 'block'; return; }
-  errorEl.style.display = 'none';
-
-  if (!confirmDuplicateDates([date])) return;
-
-  state.workLogs.push({
-    id: uid(),
-    date,
-    payType: entry.payType,
-    rate,
-    otMultiplier,
-    regularHours: entry.regularHours,
-    dayStatus: entry.dayStatus,
-    otHours: otEntry.otHours,
-    memo
-  });
-  rememberRate(entry.payType, rate, otMultiplier);
-  document.getElementById('log-date').value = '';
-  document.getElementById('log-regular-hours').value = '';
-  document.getElementById('log-daily-status').value = '1';
-  document.getElementById('log-ot-hours').value = '';
-  document.getElementById('log-ot-daily').value = '0';
-  document.getElementById('log-memo').value = '';
-
-  scheduleSave();
-  renderLogsTable();
-  renderKpis();
-  renderDashboard();
-  showToast('근무 기록을 등록했어요.', 'success');
-});
 
 document.getElementById('logs-tbody').addEventListener('click', (e) => {
   const delId = e.target.dataset.del;
