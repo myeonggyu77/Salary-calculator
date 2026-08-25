@@ -161,7 +161,7 @@
       <h3>단가 설정</h3>
       <div class="field">
         <div class="field-lbl">급여 방식</div>
-        <div class="radio-row">
+        <div class="radio-row" id="pay-type-row">
           <label><input type="radio" name="pay-type" value="hourly" checked> 시급제</label>
           <label><input type="radio" name="pay-type" value="daily"> 일급제</label>
         </div>
@@ -172,7 +172,7 @@
         <div class="field"><div class="field-lbl">1일 소정근로시간</div><input type="number" id="set-standard-hours" min="0" step="0.5" value="8"></div>
         <div class="field"><div class="field-lbl">연장근무 할증률</div><input type="number" id="set-ot-multiplier" min="1" step="0.1" value="1.5"></div>
       </div>
-      <div class="form-note">연장근무수당은 '통상시급 × 연장시간 × 할증률'로 계산돼요. 일급제인 경우 통상시급 = 일급 ÷ 1일 소정근로시간으로 자동 계산돼요.</div>
+      <div class="form-note">시급제는 '시급 × 근무시간'으로, 일급제는 '일급 × 근무일수'(소수점 입력 가능, 예: 0.5일)로 정규급여가 계산돼요. 연장근무수당은 항상 '통상시급 × 연장시간 × 할증률'로 계산되고, 일급제의 통상시급은 일급 ÷ 1일 소정근로시간으로 자동 계산돼요.</div>
       <div class="form-actions"><button class="primary-btn" id="save-settings-btn">설정 저장</button></div>
     </div>
   </div>
@@ -182,7 +182,7 @@
       <h3>근무 등록</h3>
       <div class="form-grid">
         <div class="field"><div class="field-lbl">근무일</div><input type="date" id="log-date"></div>
-        <div class="field"><div class="field-lbl">정규 근무시간</div><input type="number" id="log-regular-hours" min="0" step="0.5" placeholder="예: 8"></div>
+        <div class="field"><div class="field-lbl" id="log-regular-lbl">정규 근무시간</div><input type="number" id="log-regular-hours" min="0" step="0.5" placeholder="예: 8"></div>
         <div class="field"><div class="field-lbl">추가(연장) 근무시간</div><input type="number" id="log-ot-hours" min="0" step="0.5" placeholder="예: 2"></div>
         <div class="field"><div class="field-lbl">메모</div><input type="text" id="log-memo" placeholder="선택 입력"></div>
       </div>
@@ -197,7 +197,7 @@
       <table>
         <thead><tr>
           <th style="width:30px;"><input type="checkbox" id="logs-select-all"></th>
-          <th>근무일</th><th class="num">정규시간</th><th class="num">연장시간</th><th>메모</th><th style="width:40px;"></th>
+          <th>근무일</th><th class="num" id="logs-regular-th">정규시간</th><th class="num">연장시간</th><th>메모</th><th style="width:40px;"></th>
         </tr></thead>
         <tbody id="logs-tbody"></tbody>
       </table>
@@ -216,12 +216,12 @@
       <h3 id="cal-detail-title">날짜를 선택해 주세요</h3>
       <div class="table-wrap" style="margin-bottom:12px;">
         <table>
-          <thead><tr><th class="num">정규시간</th><th class="num">연장시간</th><th class="num">합계</th><th style="width:40px;"></th></tr></thead>
+          <thead><tr><th class="num" id="cal-regular-th">정규시간</th><th class="num">연장시간</th><th class="num">합계</th><th style="width:40px;"></th></tr></thead>
           <tbody id="cal-detail-tbody"><tr class="empty-row"><td colspan="4">달력에서 날짜를 선택하면 여기에 표시돼요.</td></tr></tbody>
         </table>
       </div>
       <div class="form-grid">
-        <div class="field"><div class="field-lbl">정규 근무시간</div><input type="number" id="cal-add-regular" min="0" step="0.5"></div>
+        <div class="field"><div class="field-lbl" id="cal-regular-lbl">정규 근무시간</div><input type="number" id="cal-add-regular" min="0" step="0.5"></div>
         <div class="field"><div class="field-lbl">추가(연장) 근무시간</div><input type="number" id="cal-add-ot" min="0" step="0.5"></div>
         <div class="field"><div class="field-lbl">메모</div><input type="text" id="cal-add-memo" placeholder="선택 입력"></div>
       </div>
@@ -239,7 +239,7 @@
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>근무일</th><th class="num">정규시간</th><th class="num">연장시간</th><th class="num">정규급여</th><th class="num">연장수당</th><th class="num">합계</th>
+          <th>근무일</th><th class="num" id="history-regular-th">정규시간</th><th class="num">연장시간</th><th class="num">정규급여</th><th class="num">연장수당</th><th class="num">합계</th>
         </tr></thead>
         <tbody id="history-tbody"></tbody>
         <tfoot id="history-tfoot"></tfoot>
@@ -297,7 +297,7 @@ function computeLog(log) {
   if (s.payType === 'hourly') {
     regularPay = (Number(s.hourlyRate) || 0) * regularHours;
   } else {
-    regularPay = regularHours > 0 ? (Number(s.dailyRate) || 0) : 0;
+    regularPay = (Number(s.dailyRate) || 0) * regularHours;
   }
   const otPay = baseHourlyRate() * otHours * (Number(s.otMultiplier) || 1);
   return { regularPay, otPay, total: regularPay + otPay };
@@ -373,6 +373,28 @@ function renderSettings() {
   document.getElementById('set-daily-rate').value = s.dailyRate || '';
   document.getElementById('set-standard-hours').value = s.standardHours || 8;
   document.getElementById('set-ot-multiplier').value = s.otMultiplier || 1.5;
+  updateRegularLabels();
+}
+
+function updateRegularLabels() {
+  const payType = document.querySelector('input[name="pay-type"]:checked').value;
+  const isDaily = payType === 'daily';
+  const lbl = isDaily ? '근무일수' : '정규 근무시간';
+  const th = isDaily ? '근무일수' : '정규시간';
+  const placeholder = isDaily ? '예: 0.5 (반일)' : '예: 8';
+  const step = isDaily ? '0.1' : '0.5';
+
+  document.getElementById('log-regular-lbl').textContent = lbl;
+  document.getElementById('logs-regular-th').textContent = th;
+  document.getElementById('cal-regular-lbl').textContent = lbl;
+  document.getElementById('cal-regular-th').textContent = th;
+  document.getElementById('history-regular-th').textContent = th;
+
+  ['log-regular-hours', 'cal-add-regular'].forEach(id => {
+    const el = document.getElementById(id);
+    el.placeholder = placeholder;
+    el.step = step;
+  });
 }
 
 function renderLogsTable() {
@@ -548,6 +570,8 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
   });
 });
+
+document.getElementById('pay-type-row').addEventListener('change', updateRegularLabels);
 
 document.getElementById('save-settings-btn').addEventListener('click', () => {
   const payType = document.querySelector('input[name="pay-type"]:checked').value;
