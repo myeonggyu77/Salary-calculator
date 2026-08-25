@@ -102,6 +102,7 @@
   .cal-work-badge.tier-normal { background: #d97a1f; }
   .cal-work-badge.tier-high { background: #dc2626; }
   .cal-work-badge.tier-vhigh { background: #7e22ce; }
+  .cal-work-badge.tier-off { background: var(--ink-faint); font-size: 11px; }
   .cal-pay { font-size: 10px; font-family: var(--mono); color: var(--ink-soft); margin-top: 3px; white-space: nowrap; max-width: 100%; }
   .cal-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; font-size: 11px; color: var(--ink-soft); }
   .cal-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
@@ -194,7 +195,14 @@
         <div class="field" id="log-ot-multiplier-field"><div class="field-lbl">연장 할증률</div><input type="number" id="log-ot-multiplier" min="1" step="0.1" value="1.5"></div>
       </div>
       <div class="form-grid">
-        <div class="field"><div class="field-lbl" id="log-regular-lbl">정규 근무시간</div><input type="number" id="log-regular-hours" min="0" step="0.5" placeholder="예: 8"></div>
+        <div class="field"><div class="field-lbl" id="log-regular-lbl">정규 근무시간</div>
+          <input type="number" id="log-regular-hours" min="0" step="0.5" placeholder="예: 8">
+          <select id="log-daily-status" style="display:none;">
+            <option value="1">출근</option>
+            <option value="0.5">반일</option>
+            <option value="off">휴무</option>
+          </select>
+        </div>
         <div class="field"><div class="field-lbl" id="log-ot-lbl">추가(연장) 근무시간</div><input type="number" id="log-ot-hours" min="0" step="0.5" placeholder="예: 2"></div>
         <div class="field"><div class="field-lbl">메모</div><input type="text" id="log-memo" placeholder="선택 입력"></div>
       </div>
@@ -229,6 +237,7 @@
       <span><span class="dot" style="background:#d97a1f;"></span>1일</span>
       <span><span class="dot" style="background:#dc2626;"></span>1일 초과 ~ 2일</span>
       <span><span class="dot" style="background:#7e22ce;"></span>2일 초과</span>
+      <span><span class="dot" style="background:var(--ink-faint);"></span>휴무</span>
     </div>
 
     <div class="cal-month-summary">
@@ -256,7 +265,14 @@
         <div class="field" id="cal-ot-multiplier-field"><div class="field-lbl">연장 할증률</div><input type="number" id="cal-add-ot-multiplier" min="1" step="0.1" value="1.5"></div>
       </div>
       <div class="form-grid">
-        <div class="field"><div class="field-lbl" id="cal-regular-lbl">정규 근무시간</div><input type="number" id="cal-add-regular" min="0" step="0.5"></div>
+        <div class="field"><div class="field-lbl" id="cal-regular-lbl">정규 근무시간</div>
+          <input type="number" id="cal-add-regular" min="0" step="0.5">
+          <select id="cal-daily-status" style="display:none;">
+            <option value="1">출근</option>
+            <option value="0.5">반일</option>
+            <option value="off">휴무</option>
+          </select>
+        </div>
         <div class="field"><div class="field-lbl" id="cal-ot-lbl">추가(연장) 근무시간</div><input type="number" id="cal-add-ot" min="0" step="0.5"></div>
         <div class="field"><div class="field-lbl">메모</div><input type="text" id="cal-add-memo" placeholder="선택 입력"></div>
       </div>
@@ -362,8 +378,13 @@ function payBadge(log) {
 }
 
 function fmtRegular(log) {
+  if (logPayType(log) === 'daily' && log.dayStatus === 'off') return '휴무';
   const n = Number(log.regularHours || 0);
   return logPayType(log) === 'daily' ? `${n}일` : `${n}h`;
+}
+
+function isOffOnlyDay(logs) {
+  return logs.length > 0 && logs.every(log => logPayType(log) === 'daily' && log.dayStatus === 'off' && Number(log.otHours || 0) === 0);
 }
 
 function fmtOt(log) {
@@ -436,8 +457,8 @@ function renderAll() {
 }
 
 const FORM_SCOPES = {
-  log: { radioName: 'log-pay-type', regularLbl: 'log-regular-lbl', regularInput: 'log-regular-hours', otLbl: 'log-ot-lbl', rateLbl: 'log-rate-lbl', rateInput: 'log-rate', otMultField: 'log-ot-multiplier-field', otMultInput: 'log-ot-multiplier' },
-  cal: { radioName: 'cal-pay-type', regularLbl: 'cal-regular-lbl', regularInput: 'cal-add-regular', otLbl: 'cal-ot-lbl', rateLbl: 'cal-rate-lbl', rateInput: 'cal-add-rate', otMultField: 'cal-ot-multiplier-field', otMultInput: 'cal-add-ot-multiplier' }
+  log: { radioName: 'log-pay-type', regularLbl: 'log-regular-lbl', regularInput: 'log-regular-hours', dailyStatusInput: 'log-daily-status', otLbl: 'log-ot-lbl', rateLbl: 'log-rate-lbl', rateInput: 'log-rate', otMultField: 'log-ot-multiplier-field', otMultInput: 'log-ot-multiplier' },
+  cal: { radioName: 'cal-pay-type', regularLbl: 'cal-regular-lbl', regularInput: 'cal-add-regular', dailyStatusInput: 'cal-daily-status', otLbl: 'cal-ot-lbl', rateLbl: 'cal-rate-lbl', rateInput: 'cal-add-rate', otMultField: 'cal-ot-multiplier-field', otMultInput: 'cal-add-ot-multiplier' }
 };
 
 function updateEntryForm(scopeKey) {
@@ -445,11 +466,11 @@ function updateEntryForm(scopeKey) {
   const payType = document.querySelector(`input[name="${cfg.radioName}"]:checked`).value;
   const isDaily = payType === 'daily';
 
-  document.getElementById(cfg.regularLbl).textContent = isDaily ? '근무일수' : '정규 근무시간';
+  document.getElementById(cfg.regularLbl).textContent = isDaily ? '근무 구분' : '정규 근무시간';
   const regularInput = document.getElementById(cfg.regularInput);
-  regularInput.placeholder = isDaily ? '예: 1 (하루)' : '예: 8';
-  regularInput.step = isDaily ? '0.1' : '0.5';
-  if (isDaily && regularInput.value === '') regularInput.value = '1';
+  const dailyStatusInput = document.getElementById(cfg.dailyStatusInput);
+  regularInput.style.display = isDaily ? 'none' : '';
+  dailyStatusInput.style.display = isDaily ? '' : 'none';
 
   document.getElementById(cfg.otLbl).textContent = isDaily ? '추가(연장) 근무일수' : '추가(연장) 근무시간';
   document.getElementById(cfg.rateLbl).textContent = isDaily ? '일급 (원)' : '시급 (원)';
@@ -587,8 +608,12 @@ function renderCalendar() {
       const total = logs.reduce((sum, log) => sum + computeLog(log).total, 0);
       monthWorkTotal += workAmount;
       monthPayTotal += total;
-      badgeLine = `<div class="cal-work-badge ${workTierClass(workAmount)}">${workAmount}</div>`;
-      payLine = `<div class="cal-pay">${fmtWonCompact(total)}</div>`;
+      if (isOffOnlyDay(logs)) {
+        badgeLine = `<div class="cal-work-badge tier-off">휴무</div>`;
+      } else {
+        badgeLine = `<div class="cal-work-badge ${workTierClass(workAmount)}">${workAmount}</div>`;
+        payLine = `<div class="cal-pay">${fmtWonCompact(total)}</div>`;
+      }
     }
     html += `<div class="${classes}" data-date="${ds}"><div class="cal-daynum${dowClass}">${d}</div>${badgeLine}${payLine}</div>`;
   }
@@ -658,6 +683,18 @@ document.querySelectorAll('.tab').forEach(tab => {
 document.getElementById('log-pay-type-row').addEventListener('change', () => updateEntryForm('log'));
 document.getElementById('cal-pay-type-row').addEventListener('change', () => updateEntryForm('cal'));
 
+function readRegularEntry(scopeKey) {
+  const cfg = FORM_SCOPES[scopeKey];
+  const payType = document.querySelector(`input[name="${cfg.radioName}"]:checked`).value;
+  if (payType === 'daily') {
+    const v = document.getElementById(cfg.dailyStatusInput).value;
+    const dayStatus = v === 'off' ? 'off' : (v === '1' ? 'work' : 'half');
+    return { payType, regularHours: v === 'off' ? 0 : Number(v), dayStatus, hasRegular: true };
+  }
+  const raw = document.getElementById(cfg.regularInput).value;
+  return { payType, regularHours: Number(raw) || 0, dayStatus: undefined, hasRegular: raw !== '' };
+}
+
 function rememberRate(payType, rate, otMultiplier) {
   if (payType === 'daily') state.settings.lastDailyRate = rate;
   else {
@@ -668,31 +705,32 @@ function rememberRate(payType, rate, otMultiplier) {
 
 document.getElementById('add-log-btn').addEventListener('click', () => {
   const date = document.getElementById('log-date').value;
-  const payType = document.querySelector('input[name="log-pay-type"]:checked').value;
+  const entry = readRegularEntry('log');
   const rate = Number(document.getElementById('log-rate').value) || 0;
   const otMultiplier = Number(document.getElementById('log-ot-multiplier').value) || 1.5;
-  const regularHours = document.getElementById('log-regular-hours').value;
   const otHours = document.getElementById('log-ot-hours').value;
   const memo = document.getElementById('log-memo').value.trim();
   const errorEl = document.getElementById('log-error');
 
   if (!date) { errorEl.textContent = '근무일을 입력해 주세요.'; errorEl.style.display = 'block'; return; }
-  if (regularHours === '' && otHours === '') { errorEl.textContent = '정규 근무시간 또는 연장 근무시간 중 하나는 입력해 주세요.'; errorEl.style.display = 'block'; return; }
+  if (!entry.hasRegular && otHours === '') { errorEl.textContent = '정규 근무시간 또는 연장 근무시간 중 하나는 입력해 주세요.'; errorEl.style.display = 'block'; return; }
   errorEl.style.display = 'none';
 
   state.workLogs.push({
     id: uid(),
     date,
-    payType,
+    payType: entry.payType,
     rate,
     otMultiplier,
-    regularHours: Number(regularHours) || 0,
+    regularHours: entry.regularHours,
+    dayStatus: entry.dayStatus,
     otHours: Number(otHours) || 0,
     memo
   });
-  rememberRate(payType, rate, otMultiplier);
+  rememberRate(entry.payType, rate, otMultiplier);
   document.getElementById('log-date').value = '';
   document.getElementById('log-regular-hours').value = '';
+  document.getElementById('log-daily-status').value = '1';
   document.getElementById('log-ot-hours').value = '';
   document.getElementById('log-memo').value = '';
 
@@ -747,14 +785,13 @@ document.getElementById('cal-next-btn').addEventListener('click', () => {
 
 document.getElementById('cal-add-btn').addEventListener('click', () => {
   if (!selectedDate) return;
-  const payType = document.querySelector('input[name="cal-pay-type"]:checked').value;
+  const entry = readRegularEntry('cal');
   const rate = Number(document.getElementById('cal-add-rate').value) || 0;
   const otMultiplier = Number(document.getElementById('cal-add-ot-multiplier').value) || 1.5;
-  const regularHours = document.getElementById('cal-add-regular').value;
   const otHours = document.getElementById('cal-add-ot').value;
   const memo = document.getElementById('cal-add-memo').value.trim();
 
-  if (regularHours === '' && otHours === '') {
+  if (!entry.hasRegular && otHours === '') {
     showToast('정규 근무시간 또는 연장 근무시간 중 하나는 입력해 주세요.', 'error');
     return;
   }
@@ -762,15 +799,17 @@ document.getElementById('cal-add-btn').addEventListener('click', () => {
   state.workLogs.push({
     id: uid(),
     date: selectedDate,
-    payType,
+    payType: entry.payType,
     rate,
     otMultiplier,
-    regularHours: Number(regularHours) || 0,
+    regularHours: entry.regularHours,
+    dayStatus: entry.dayStatus,
     otHours: Number(otHours) || 0,
     memo
   });
-  rememberRate(payType, rate, otMultiplier);
+  rememberRate(entry.payType, rate, otMultiplier);
   document.getElementById('cal-add-regular').value = '';
+  document.getElementById('cal-daily-status').value = '1';
   document.getElementById('cal-add-ot').value = '';
   document.getElementById('cal-add-memo').value = '';
 
