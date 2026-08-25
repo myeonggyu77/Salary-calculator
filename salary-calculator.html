@@ -136,7 +136,6 @@
   .toast.error { background: var(--down); }
   .toast.success { background: var(--accent); }
 
-  select#month-filter { max-width: 160px; }
 </style>
 </head>
 <body>
@@ -175,7 +174,7 @@
 
   <div class="banner" id="local-banner" style="display:none;">이 브라우저에만 저장되는 로컬 모드예요. 다른 기기와는 데이터가 공유되지 않아요.</div>
 
-  <div class="kpi-row">
+  <div class="kpi-row" id="kpi-row">
     <div class="kpi"><div class="lbl">이번 달 정규급여</div><div class="val" id="kpi-regular">0원</div></div>
     <div class="kpi"><div class="lbl">이번 달 연장근무수당</div><div class="val" id="kpi-ot">0원</div></div>
     <div class="kpi"><div class="lbl">이번 달 합계</div><div class="val" id="kpi-total">0원</div></div>
@@ -334,10 +333,12 @@
   </div>
 
   <div class="panel" id="panel-history">
+    <div class="cal-header">
+      <button class="icon-btn" id="history-prev-btn">◀</button>
+      <div class="cal-title" id="history-month-title"></div>
+      <button class="icon-btn" id="history-next-btn">▶</button>
+    </div>
     <div class="toolbar">
-      <div class="btn-group">
-        <div class="field" style="margin:0;"><select id="month-filter"></select></div>
-      </div>
       <div class="hint" id="history-count-hint"></div>
     </div>
     <div class="table-wrap">
@@ -502,7 +503,6 @@ function renderAll() {
   updateEntryForm('log');
   updateEntryForm('cal');
   renderLogsTable();
-  renderMonthFilter();
   renderHistory();
   renderKpis();
   renderCalendar();
@@ -561,20 +561,17 @@ function renderLogsTable() {
   `).join('');
 }
 
-function renderMonthFilter() {
-  const sel = document.getElementById('month-filter');
-  const months = Array.from(new Set(state.workLogs.map(l => (l.date || '').slice(0, 7)).filter(Boolean))).sort().reverse();
-  const current = sel.value;
-  sel.innerHTML = `<option value="">전체</option>` + months.map(m => `<option value="${m}">${m}</option>`).join('');
-  if (months.includes(current)) sel.value = current;
-}
+let historyDate = new Date();
+historyDate.setDate(1);
 
 function renderHistory() {
+  document.getElementById('history-month-title').textContent = `${historyDate.getFullYear()}년 ${historyDate.getMonth() + 1}월`;
+
   const tbody = document.getElementById('history-tbody');
   const tfoot = document.getElementById('history-tfoot');
-  const monthFilter = document.getElementById('month-filter').value;
+  const monthFilter = `${historyDate.getFullYear()}-${pad2(historyDate.getMonth() + 1)}`;
   let logs = [...state.workLogs].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  if (monthFilter) logs = logs.filter(l => (l.date || '').startsWith(monthFilter));
+  logs = logs.filter(l => (l.date || '').startsWith(monthFilter));
   document.getElementById('history-count-hint').textContent = `총 ${logs.length}건`;
 
   if (logs.length === 0) {
@@ -775,12 +772,17 @@ function escapeHtml(str) {
 }
 
 // ---------- 이벤트 ----------
+function updateKpiRowVisibility(tabName) {
+  document.getElementById('kpi-row').style.display = tabName === 'calendar' ? 'none' : '';
+}
+
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    updateKpiRowVisibility(tab.dataset.tab);
     closeCalModal();
   });
 });
@@ -954,7 +956,6 @@ document.getElementById('add-log-btn').addEventListener('click', () => {
 
   scheduleSave();
   renderLogsTable();
-  renderMonthFilter();
   renderHistory();
   renderKpis();
   showToast('근무 기록을 등록했어요.', 'success');
@@ -967,7 +968,6 @@ document.getElementById('logs-tbody').addEventListener('click', (e) => {
     state.workLogs = state.workLogs.filter(l => l.id !== delId);
     scheduleSave();
     renderLogsTable();
-    renderMonthFilter();
     renderHistory();
     renderKpis();
   }
@@ -984,12 +984,18 @@ document.getElementById('delete-selected-logs-btn').addEventListener('click', ()
   state.workLogs = state.workLogs.filter(l => !ids.includes(l.id));
   scheduleSave();
   renderLogsTable();
-  renderMonthFilter();
   renderHistory();
   renderKpis();
 });
 
-document.getElementById('month-filter').addEventListener('change', renderHistory);
+document.getElementById('history-prev-btn').addEventListener('click', () => {
+  historyDate.setMonth(historyDate.getMonth() - 1);
+  renderHistory();
+});
+document.getElementById('history-next-btn').addEventListener('click', () => {
+  historyDate.setMonth(historyDate.getMonth() + 1);
+  renderHistory();
+});
 
 document.getElementById('cal-prev-btn').addEventListener('click', () => {
   calendarDate.setMonth(calendarDate.getMonth() - 1);
@@ -1066,7 +1072,6 @@ document.getElementById('cal-add-btn').addEventListener('click', () => {
 
   scheduleSave();
   renderLogsTable();
-  renderMonthFilter();
   renderHistory();
   renderKpis();
 
@@ -1088,7 +1093,6 @@ document.getElementById('cal-detail-tbody').addEventListener('click', (e) => {
     state.workLogs = state.workLogs.filter(l => l.id !== delId);
     scheduleSave();
     renderLogsTable();
-    renderMonthFilter();
     renderHistory();
     renderKpis();
     renderCalendar();
@@ -1171,6 +1175,7 @@ async function startApp() {
   document.getElementById('logout-btn').style.display = usingSupabase ? 'inline-block' : 'none';
   document.getElementById('mode-sub').textContent = usingSupabase ? (currentUser.email || '') : '로컬 저장 모드';
   applyAmountsHiddenLabel();
+  updateKpiRowVisibility('calendar');
   await loadData();
   renderAll();
 }
