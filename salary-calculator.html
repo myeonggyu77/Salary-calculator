@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>급여 계산기</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
     --ink: #1a2420;
@@ -110,12 +111,15 @@
   .cal-month-summary .item { flex: 1; background: var(--paper-raised); padding: 12px 14px; }
   .cal-month-summary .item .lbl { font-size: 11px; color: var(--ink-faint); margin-bottom: 4px; }
   .cal-month-summary .item .val { font-family: var(--mono); font-size: 16px; font-weight: 600; }
-  .cal-detail { margin-top: 18px; }
-  .cal-detail h3 { font-size: 13px; font-weight: 600; margin: 0 0 10px; }
   .money.masked { letter-spacing: 1px; }
 
   .pay-badge { display: inline-block; font-size: 11px; font-family: var(--mono); padding: 2px 7px; border-radius: 3px; background: var(--line-soft); color: var(--ink-soft); white-space: nowrap; }
   .pay-badge.daily { background: var(--accent-soft); color: var(--accent); }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(26, 36, 32, 0.45); display: flex; align-items: center; justify-content: center; z-index: 60; padding: 20px; }
+  .modal-card { background: var(--paper-raised); border-radius: 8px; padding: 20px; width: 100%; max-width: 420px; max-height: 88vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .modal-header h3 { font-size: 15px; font-weight: 600; margin: 0; }
 
   .login-overlay { position: fixed; inset: 0; background: var(--paper); display: flex; align-items: center; justify-content: center; z-index: 50; }
   .login-card { width: 100%; max-width: 320px; padding: 24px; }
@@ -174,12 +178,12 @@
   </div>
 
   <div class="tabs">
-    <button class="tab active" data-tab="logs">근무 등록</button>
-    <button class="tab" data-tab="calendar">달력</button>
+    <button class="tab active" data-tab="calendar">달력</button>
+    <button class="tab" data-tab="logs">근무 등록</button>
     <button class="tab" data-tab="history">급여 내역</button>
   </div>
 
-  <div class="panel active" id="panel-logs">
+  <div class="panel" id="panel-logs">
     <div class="form-card">
       <h3>근무 등록</h3>
       <div class="field">
@@ -209,6 +213,17 @@
       <div class="form-error" id="log-error" style="display:none;"></div>
       <div class="form-actions"><button class="primary-btn" id="add-log-btn">등록</button></div>
     </div>
+
+    <div class="form-card">
+      <h3>일괄 등록 (엑셀)</h3>
+      <div class="form-note">엑셀 양식을 내려받아 여러 날짜를 한 번에 채운 뒤, 그 파일을 업로드하면 한꺼번에 등록돼요.</div>
+      <div class="form-actions" style="justify-content:flex-start; gap:8px; flex-wrap:wrap;">
+        <button class="ghost-btn" id="download-template-btn">엑셀 양식 다운로드</button>
+        <button class="ghost-btn" id="bulk-upload-btn">엑셀 파일 업로드</button>
+        <input type="file" id="bulk-upload-input" accept=".xlsx,.xls,.csv" style="display:none;">
+      </div>
+    </div>
+
     <div class="toolbar">
       <div class="hint" id="logs-count-hint"></div>
       <div class="btn-group"><button class="ghost-btn" id="delete-selected-logs-btn">선택 삭제</button></div>
@@ -224,7 +239,7 @@
     </div>
   </div>
 
-  <div class="panel" id="panel-calendar">
+  <div class="panel active" id="panel-calendar">
     <div class="cal-header">
       <button class="icon-btn" id="cal-prev-btn">◀</button>
       <div class="cal-title" id="cal-title"></div>
@@ -245,8 +260,14 @@
       <div class="item"><div class="lbl">이 달 예상 급여</div><div class="val" id="cal-month-pay">0원</div></div>
     </div>
 
-    <div class="cal-detail form-card" id="cal-detail">
-      <h3 id="cal-detail-title">날짜를 선택해 주세요</h3>
+  </div>
+
+  <div class="modal-overlay" id="cal-modal-overlay" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="cal-detail-title">날짜를 선택해 주세요</h3>
+        <button class="icon-btn" id="cal-modal-close">✕</button>
+      </div>
       <div class="table-wrap" style="margin-bottom:12px;">
         <table>
           <thead><tr><th>구분</th><th class="num">기준금액</th><th class="num">정규</th><th class="num">연장시간</th><th class="num">합계</th><th style="width:40px;"></th></tr></thead>
@@ -627,8 +648,17 @@ function renderCalendar() {
       selectedDate = cell.dataset.date;
       renderCalendar();
       renderCalDetail();
+      openCalModal();
     });
   });
+}
+
+function openCalModal() {
+  document.getElementById('cal-modal-overlay').style.display = 'flex';
+}
+
+function closeCalModal() {
+  document.getElementById('cal-modal-overlay').style.display = 'none';
 }
 
 function renderCalDetail() {
@@ -677,6 +707,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    closeCalModal();
   });
 });
 
@@ -702,6 +733,107 @@ function rememberRate(payType, rate, otMultiplier) {
     state.settings.lastOtMultiplier = otMultiplier;
   }
 }
+
+// ---------- 엑셀 일괄등록 ----------
+function downloadTemplate() {
+  const wsData = [
+    ['근무일(YYYY-MM-DD)', '급여방식(시급/일급)', '기준금액', '정규(시급:시간숫자 / 일급:출근,반일,휴무)', '연장(시급:시간숫자 / 일급:일수숫자)', '연장할증률(시급만 해당)', '메모'],
+    ['2026-08-01', '시급', 10030, 8, 0, 1.5, ''],
+    ['2026-08-02', '일급', 100000, '출근', 0, '', ''],
+    ['2026-08-03', '일급', 100000, '반일', 0, '', ''],
+    ['2026-08-04', '일급', 100000, '휴무', 0, '', '']
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 10 }, { wch: 32 }, { wch: 28 }, { wch: 16 }, { wch: 16 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '근무등록');
+  XLSX.writeFile(wb, '급여계산기_근무등록_양식.xlsx');
+}
+
+function normalizeDate(v) {
+  if (v instanceof Date && !isNaN(v)) return dateStr(v.getFullYear(), v.getMonth(), v.getDate());
+  if (typeof v === 'number' && window.XLSX && XLSX.SSF) {
+    const d = XLSX.SSF.parse_date_code(v);
+    if (d) return dateStr(d.y, d.m - 1, d.d);
+  }
+  const s = String(v == null ? '' : v).trim();
+  if (!s) return null;
+  const m = s.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/);
+  if (m) return dateStr(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return null;
+}
+
+function parseBulkRow(row) {
+  const date = normalizeDate(row[0]);
+  if (!date) return null;
+
+  const payTypeRaw = String(row[1] == null ? '' : row[1]).trim();
+  let payType;
+  if (payTypeRaw.includes('일급')) payType = 'daily';
+  else if (payTypeRaw.includes('시급')) payType = 'hourly';
+  else return null;
+
+  const rate = Number(row[2]) || 0;
+  let regularHours, dayStatus;
+  if (payType === 'daily') {
+    const v = String(row[3] == null ? '' : row[3]).trim();
+    if (v.includes('휴무')) { dayStatus = 'off'; regularHours = 0; }
+    else if (v.includes('반일') || v === '0.5') { dayStatus = 'half'; regularHours = 0.5; }
+    else { dayStatus = 'work'; regularHours = Number(v) || 1; }
+  } else {
+    regularHours = Number(row[3]) || 0;
+  }
+
+  const otHours = Number(row[4]) || 0;
+  const otMultiplier = Number(row[5]) || 1.5;
+  const memo = row[6] == null ? '' : String(row[6]);
+
+  return { id: uid(), date, payType, rate, otMultiplier, regularHours, dayStatus, otHours, memo };
+}
+
+async function handleBulkUpload(file) {
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: '' });
+
+    let added = 0, skipped = 0;
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.every(c => c === '' || c == null)) continue;
+      const parsed = parseBulkRow(row);
+      if (!parsed) { skipped++; continue; }
+      state.workLogs.push(parsed);
+      rememberRate(parsed.payType, parsed.rate, parsed.otMultiplier);
+      added++;
+    }
+
+    if (added > 0) {
+      scheduleSave();
+      renderAll();
+    }
+    if (added === 0 && skipped === 0) {
+      showToast('등록할 내용이 없어요.', 'error');
+    } else {
+      showToast(`일괄등록 완료: ${added}건 등록${skipped > 0 ? `, ${skipped}건은 형식 오류로 건너뜀` : ''}`, added > 0 ? 'success' : 'error');
+    }
+  } catch (e) {
+    console.error(e);
+    showToast('엑셀 파일을 읽지 못했어요: ' + e.message, 'error');
+  }
+}
+
+document.getElementById('download-template-btn').addEventListener('click', downloadTemplate);
+document.getElementById('bulk-upload-btn').addEventListener('click', () => {
+  document.getElementById('bulk-upload-input').click();
+});
+document.getElementById('bulk-upload-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  await handleBulkUpload(file);
+  e.target.value = '';
+});
 
 document.getElementById('add-log-btn').addEventListener('click', () => {
   const date = document.getElementById('log-date').value;
@@ -781,6 +913,11 @@ document.getElementById('cal-prev-btn').addEventListener('click', () => {
 document.getElementById('cal-next-btn').addEventListener('click', () => {
   calendarDate.setMonth(calendarDate.getMonth() + 1);
   renderCalendar();
+});
+
+document.getElementById('cal-modal-close').addEventListener('click', closeCalModal);
+document.getElementById('cal-modal-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'cal-modal-overlay') closeCalModal();
 });
 
 document.getElementById('cal-add-btn').addEventListener('click', () => {
