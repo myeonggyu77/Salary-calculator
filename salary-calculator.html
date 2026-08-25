@@ -199,8 +199,7 @@
 
   <div class="tabs">
     <button class="tab active" data-tab="calendar">달력</button>
-    <button class="tab" data-tab="logs">근무 등록</button>
-    <button class="tab" data-tab="history">급여산출</button>
+    <button class="tab" data-tab="logs">근무등록·급여산출</button>
     <button class="tab" data-tab="dashboard">급여현황</button>
   </div>
 
@@ -254,6 +253,11 @@
       </div>
     </div>
 
+    <div class="cal-header">
+      <button class="icon-btn" id="logs-prev-btn">◀</button>
+      <div class="cal-title" id="logs-month-title"></div>
+      <button class="icon-btn" id="logs-next-btn">▶</button>
+    </div>
     <div class="toolbar">
       <div class="hint" id="logs-count-hint"></div>
       <div class="btn-group"><button class="ghost-btn" id="delete-selected-logs-btn">선택 삭제</button></div>
@@ -265,6 +269,7 @@
           <th>근무일</th><th>구분</th><th class="num">기준금액</th><th class="num">정규</th><th class="num">연장시간</th><th class="num">정규급여</th><th class="num">연장수당</th><th class="num">합계</th><th>메모</th><th style="width:40px;"></th>
         </tr></thead>
         <tbody id="logs-tbody"></tbody>
+        <tfoot id="logs-tfoot"></tfoot>
       </table>
     </div>
   </div>
@@ -350,25 +355,6 @@
     </div>
   </div>
 
-  <div class="panel" id="panel-history">
-    <div class="cal-header">
-      <button class="icon-btn" id="history-prev-btn">◀</button>
-      <div class="cal-title" id="history-month-title"></div>
-      <button class="icon-btn" id="history-next-btn">▶</button>
-    </div>
-    <div class="toolbar">
-      <div class="hint" id="history-count-hint"></div>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>근무일</th><th>구분</th><th class="num">기준금액</th><th class="num">정규</th><th class="num">연장시간</th><th class="num">정규급여</th><th class="num">연장수당</th><th class="num">합계</th>
-        </tr></thead>
-        <tbody id="history-tbody"></tbody>
-        <tfoot id="history-tfoot"></tfoot>
-      </table>
-    </div>
-  </div>
 
   <div class="panel" id="panel-dashboard">
     <div class="cal-header">
@@ -544,7 +530,6 @@ function renderAll() {
   updateEntryForm('log');
   updateEntryForm('cal');
   renderLogsTable();
-  renderHistory();
   renderKpis();
   renderCalendar();
   renderCalDetail();
@@ -581,16 +566,30 @@ function updateEntryForm(scopeKey) {
   if (state.settings.lastOtMultiplier && otMultInput.value === '1.5') otMultInput.value = state.settings.lastOtMultiplier;
 }
 
+let logsMonthDate = new Date();
+logsMonthDate.setDate(1);
+
 function renderLogsTable() {
+  document.getElementById('logs-month-title').textContent = `${logsMonthDate.getFullYear()}년 ${logsMonthDate.getMonth() + 1}월`;
+
   const tbody = document.getElementById('logs-tbody');
-  const sorted = [...state.workLogs].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const tfoot = document.getElementById('logs-tfoot');
+  const monthFilter = `${logsMonthDate.getFullYear()}-${pad2(logsMonthDate.getMonth() + 1)}`;
+  const sorted = [...state.workLogs]
+    .filter(l => (l.date || '').startsWith(monthFilter))
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   document.getElementById('logs-count-hint').textContent = `총 ${sorted.length}건`;
+
   if (sorted.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="11">등록된 근무 기록이 없어요.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="11">이 달에 등록된 근무 기록이 없어요.</td></tr>`;
+    tfoot.innerHTML = '';
     return;
   }
+
+  let sumRegular = 0, sumOt = 0, sumTotal = 0;
   tbody.innerHTML = sorted.map(log => {
     const c = computeLog(log);
+    sumRegular += c.regularPay; sumOt += c.otPay; sumTotal += c.total;
     return `
     <tr>
       <td><input type="checkbox" class="log-check" data-id="${log.id}"></td>
@@ -607,47 +606,12 @@ function renderLogsTable() {
     </tr>
   `;
   }).join('');
-}
-
-let historyDate = new Date();
-historyDate.setDate(1);
-
-function renderHistory() {
-  document.getElementById('history-month-title').textContent = `${historyDate.getFullYear()}년 ${historyDate.getMonth() + 1}월`;
-
-  const tbody = document.getElementById('history-tbody');
-  const tfoot = document.getElementById('history-tfoot');
-  const monthFilter = `${historyDate.getFullYear()}-${pad2(historyDate.getMonth() + 1)}`;
-  let logs = [...state.workLogs].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  logs = logs.filter(l => (l.date || '').startsWith(monthFilter));
-  document.getElementById('history-count-hint').textContent = `총 ${logs.length}건`;
-
-  if (logs.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">표시할 근무 기록이 없어요.</td></tr>`;
-    tfoot.innerHTML = '';
-    return;
-  }
-
-  let sumRegular = 0, sumOt = 0, sumTotal = 0;
-  tbody.innerHTML = logs.map(log => {
-    const c = computeLog(log);
-    sumRegular += c.regularPay; sumOt += c.otPay; sumTotal += c.total;
-    return `<tr>
-      <td>${log.date || ''}</td>
-      <td>${payBadge(log)}</td>
-      <td class="num">${fmtWon(log.rate)}</td>
-      <td class="num">${fmtRegular(log)}</td>
-      <td class="num">${fmtOt(log)}</td>
-      <td class="num">${fmtWon(c.regularPay)}</td>
-      <td class="num">${fmtWon(c.otPay)}</td>
-      <td class="num">${fmtWon(c.total)}</td>
-    </tr>`;
-  }).join('');
   tfoot.innerHTML = `<tr style="font-weight:600; border-top: 1px solid var(--ink);">
-    <td colspan="5">합계</td>
+    <td colspan="6">합계</td>
     <td class="num">${fmtWon(sumRegular)}</td>
     <td class="num">${fmtWon(sumOt)}</td>
     <td class="num">${fmtWon(sumTotal)}</td>
+    <td colspan="2"></td>
   </tr>`;
 }
 
@@ -1084,7 +1048,6 @@ document.getElementById('add-log-btn').addEventListener('click', () => {
 
   scheduleSave();
   renderLogsTable();
-  renderHistory();
   renderKpis();
   renderDashboard();
   showToast('근무 기록을 등록했어요.', 'success');
@@ -1097,7 +1060,6 @@ document.getElementById('logs-tbody').addEventListener('click', (e) => {
     state.workLogs = state.workLogs.filter(l => l.id !== delId);
     scheduleSave();
     renderLogsTable();
-    renderHistory();
     renderKpis();
     renderDashboard();
   }
@@ -1114,18 +1076,17 @@ document.getElementById('delete-selected-logs-btn').addEventListener('click', ()
   state.workLogs = state.workLogs.filter(l => !ids.includes(l.id));
   scheduleSave();
   renderLogsTable();
-  renderHistory();
   renderKpis();
   renderDashboard();
 });
 
-document.getElementById('history-prev-btn').addEventListener('click', () => {
-  historyDate.setMonth(historyDate.getMonth() - 1);
-  renderHistory();
+document.getElementById('logs-prev-btn').addEventListener('click', () => {
+  logsMonthDate.setMonth(logsMonthDate.getMonth() - 1);
+  renderLogsTable();
 });
-document.getElementById('history-next-btn').addEventListener('click', () => {
-  historyDate.setMonth(historyDate.getMonth() + 1);
-  renderHistory();
+document.getElementById('logs-next-btn').addEventListener('click', () => {
+  logsMonthDate.setMonth(logsMonthDate.getMonth() + 1);
+  renderLogsTable();
 });
 
 document.getElementById('dash-prev-btn').addEventListener('click', () => {
@@ -1214,7 +1175,6 @@ document.getElementById('cal-add-btn').addEventListener('click', () => {
 
   scheduleSave();
   renderLogsTable();
-  renderHistory();
   renderKpis();
   renderDashboard();
 
@@ -1236,7 +1196,6 @@ document.getElementById('cal-detail-tbody').addEventListener('click', (e) => {
     state.workLogs = state.workLogs.filter(l => l.id !== delId);
     scheduleSave();
     renderLogsTable();
-    renderHistory();
     renderKpis();
     renderDashboard();
     renderCalendar();
@@ -1257,7 +1216,7 @@ document.getElementById('toggle-amounts-btn').addEventListener('click', () => {
   amountsHidden = !amountsHidden;
   try { localStorage.setItem('salary_amounts_hidden', amountsHidden ? '1' : '0'); } catch (e) {}
   applyAmountsHiddenLabel();
-  renderHistory();
+  renderLogsTable();
   renderKpis();
   renderDashboard();
   renderCalendar();
