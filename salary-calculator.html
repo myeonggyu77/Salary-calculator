@@ -192,9 +192,9 @@
   <div class="banner" id="local-banner" style="display:none;">이 브라우저에만 저장되는 로컬 모드예요. 다른 기기와는 데이터가 공유되지 않아요.</div>
 
   <div class="kpi-row" id="kpi-row">
-    <div class="kpi"><div class="lbl">이번 달 정규급여</div><div class="val" id="kpi-regular">0원</div></div>
-    <div class="kpi"><div class="lbl">이번 달 연장근무수당</div><div class="val" id="kpi-ot">0원</div></div>
-    <div class="kpi"><div class="lbl">이번 달 합계</div><div class="val" id="kpi-total">0원</div></div>
+    <div class="kpi"><div class="lbl" id="kpi-lbl-regular">정규급여</div><div class="val" id="kpi-regular">0원</div></div>
+    <div class="kpi"><div class="lbl" id="kpi-lbl-ot">연장근무수당</div><div class="val" id="kpi-ot">0원</div></div>
+    <div class="kpi"><div class="lbl" id="kpi-lbl-total">합계</div><div class="val" id="kpi-total">0원</div></div>
   </div>
 
   <div class="tabs">
@@ -616,10 +616,14 @@ function renderLogsTable() {
 }
 
 function renderKpis() {
-  const thisMonth = new Date().toISOString().slice(0, 7);
-  const logs = state.workLogs.filter(l => (l.date || '').startsWith(thisMonth));
+  const monthNum = logsMonthDate.getMonth() + 1;
+  const monthFilter = `${logsMonthDate.getFullYear()}-${pad2(monthNum)}`;
+  const logs = state.workLogs.filter(l => (l.date || '').startsWith(monthFilter));
   let sumRegular = 0, sumOt = 0;
   logs.forEach(log => { const c = computeLog(log); sumRegular += c.regularPay; sumOt += c.otPay; });
+  document.getElementById('kpi-lbl-regular').textContent = `${monthNum}월 정규급여`;
+  document.getElementById('kpi-lbl-ot').textContent = `${monthNum}월 연장근무수당`;
+  document.getElementById('kpi-lbl-total').textContent = `${monthNum}월 합계`;
   document.getElementById('kpi-regular').textContent = fmtWon(sumRegular);
   document.getElementById('kpi-ot').textContent = fmtWon(sumOt);
   document.getElementById('kpi-total').textContent = fmtWon(sumRegular + sumOt);
@@ -1083,10 +1087,12 @@ document.getElementById('delete-selected-logs-btn').addEventListener('click', ()
 document.getElementById('logs-prev-btn').addEventListener('click', () => {
   logsMonthDate.setMonth(logsMonthDate.getMonth() - 1);
   renderLogsTable();
+  renderKpis();
 });
 document.getElementById('logs-next-btn').addEventListener('click', () => {
   logsMonthDate.setMonth(logsMonthDate.getMonth() + 1);
   renderLogsTable();
+  renderKpis();
 });
 
 document.getElementById('dash-prev-btn').addEventListener('click', () => {
