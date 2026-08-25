@@ -96,6 +96,9 @@
   .cal-detail { margin-top: 18px; }
   .cal-detail h3 { font-size: 13px; font-weight: 600; margin: 0 0 10px; }
 
+  .pay-badge { display: inline-block; font-size: 11px; font-family: var(--mono); padding: 2px 7px; border-radius: 3px; background: var(--line-soft); color: var(--ink-soft); white-space: nowrap; }
+  .pay-badge.daily { background: var(--accent-soft); color: var(--accent); }
+
   .login-overlay { position: fixed; inset: 0; background: var(--paper); display: flex; align-items: center; justify-content: center; z-index: 50; }
   .login-card { width: 100%; max-width: 320px; padding: 24px; }
   .login-card h2 { font-size: 17px; margin: 0 0 4px; }
@@ -159,20 +162,13 @@
   <div class="panel active" id="panel-settings">
     <div class="form-card">
       <h3>단가 설정</h3>
-      <div class="field">
-        <div class="field-lbl">급여 방식</div>
-        <div class="radio-row" id="pay-type-row">
-          <label><input type="radio" name="pay-type" value="hourly" checked> 시급제</label>
-          <label><input type="radio" name="pay-type" value="daily"> 일급제</label>
-        </div>
-      </div>
       <div class="form-grid">
         <div class="field"><div class="field-lbl">시급 (원)</div><input type="number" id="set-hourly-rate" min="0" step="10" placeholder="예: 10030"></div>
         <div class="field"><div class="field-lbl">일급 (원)</div><input type="number" id="set-daily-rate" min="0" step="100" placeholder="예: 80000"></div>
         <div class="field"><div class="field-lbl">1일 소정근로시간</div><input type="number" id="set-standard-hours" min="0" step="0.5" value="8"></div>
         <div class="field"><div class="field-lbl">연장근무 할증률</div><input type="number" id="set-ot-multiplier" min="1" step="0.1" value="1.5"></div>
       </div>
-      <div class="form-note">시급제는 '시급 × 근무시간'으로, 일급제는 '일급 × 근무일수'(소수점 입력 가능, 예: 0.5일)로 정규급여가 계산돼요. 연장근무수당은 항상 '통상시급 × 연장시간 × 할증률'로 계산되고, 일급제의 통상시급은 일급 ÷ 1일 소정근로시간으로 자동 계산돼요.</div>
+      <div class="form-note">근무를 등록할 때마다 시급제/일급제를 선택해요. 시급제는 '시급 × 근무시간'으로, 일급제는 '일급 × 근무일수'(소수점 입력 가능, 예: 0.5일)로 정규급여가 계산돼요. 연장근무수당은 항상 '통상시급 × 연장시간 × 할증률'로 계산되고, 일급제의 통상시급은 일급 ÷ 1일 소정근로시간으로 자동 계산돼요.</div>
       <div class="form-actions"><button class="primary-btn" id="save-settings-btn">설정 저장</button></div>
     </div>
   </div>
@@ -180,6 +176,13 @@
   <div class="panel" id="panel-logs">
     <div class="form-card">
       <h3>근무 등록</h3>
+      <div class="field">
+        <div class="field-lbl">급여 방식</div>
+        <div class="radio-row" id="log-pay-type-row">
+          <label><input type="radio" name="log-pay-type" value="hourly" checked> 시급제</label>
+          <label><input type="radio" name="log-pay-type" value="daily"> 일급제</label>
+        </div>
+      </div>
       <div class="form-grid">
         <div class="field"><div class="field-lbl">근무일</div><input type="date" id="log-date"></div>
         <div class="field"><div class="field-lbl" id="log-regular-lbl">정규 근무시간</div><input type="number" id="log-regular-hours" min="0" step="0.5" placeholder="예: 8"></div>
@@ -197,7 +200,7 @@
       <table>
         <thead><tr>
           <th style="width:30px;"><input type="checkbox" id="logs-select-all"></th>
-          <th>근무일</th><th class="num" id="logs-regular-th">정규시간</th><th class="num">연장시간</th><th>메모</th><th style="width:40px;"></th>
+          <th>근무일</th><th>구분</th><th class="num">정규</th><th class="num">연장시간</th><th>메모</th><th style="width:40px;"></th>
         </tr></thead>
         <tbody id="logs-tbody"></tbody>
       </table>
@@ -216,9 +219,16 @@
       <h3 id="cal-detail-title">날짜를 선택해 주세요</h3>
       <div class="table-wrap" style="margin-bottom:12px;">
         <table>
-          <thead><tr><th class="num" id="cal-regular-th">정규시간</th><th class="num">연장시간</th><th class="num">합계</th><th style="width:40px;"></th></tr></thead>
-          <tbody id="cal-detail-tbody"><tr class="empty-row"><td colspan="4">달력에서 날짜를 선택하면 여기에 표시돼요.</td></tr></tbody>
+          <thead><tr><th>구분</th><th class="num">정규</th><th class="num">연장시간</th><th class="num">합계</th><th style="width:40px;"></th></tr></thead>
+          <tbody id="cal-detail-tbody"><tr class="empty-row"><td colspan="5">달력에서 날짜를 선택하면 여기에 표시돼요.</td></tr></tbody>
         </table>
+      </div>
+      <div class="field">
+        <div class="field-lbl">급여 방식</div>
+        <div class="radio-row" id="cal-pay-type-row">
+          <label><input type="radio" name="cal-pay-type" value="hourly" checked> 시급제</label>
+          <label><input type="radio" name="cal-pay-type" value="daily"> 일급제</label>
+        </div>
       </div>
       <div class="form-grid">
         <div class="field"><div class="field-lbl" id="cal-regular-lbl">정규 근무시간</div><input type="number" id="cal-add-regular" min="0" step="0.5"></div>
@@ -239,7 +249,7 @@
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>근무일</th><th class="num" id="history-regular-th">정규시간</th><th class="num">연장시간</th><th class="num">정규급여</th><th class="num">연장수당</th><th class="num">합계</th>
+          <th>근무일</th><th>구분</th><th class="num">정규</th><th class="num">연장시간</th><th class="num">정규급여</th><th class="num">연장수당</th><th class="num">합계</th>
         </tr></thead>
         <tbody id="history-tbody"></tbody>
         <tfoot id="history-tfoot"></tfoot>
@@ -265,7 +275,7 @@ let currentUser = null;
 let saveTimer = null;
 
 let state = {
-  settings: { payType: 'hourly', hourlyRate: 0, dailyRate: 0, standardHours: 8, otMultiplier: 1.5 },
+  settings: { hourlyRate: 0, dailyRate: 0, standardHours: 8, otMultiplier: 1.5 },
   workLogs: []
 };
 
@@ -282,25 +292,38 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
 function fmtWon(n) { return Math.round(n || 0).toLocaleString('ko-KR') + '원'; }
 
 // ---------- 계산 로직 ----------
-function baseHourlyRate() {
+function logPayType(log) { return log.payType === 'daily' ? 'daily' : 'hourly'; }
+
+function baseHourlyRate(payType) {
   const s = state.settings;
-  if (s.payType === 'hourly') return Number(s.hourlyRate) || 0;
+  if (payType === 'hourly') return Number(s.hourlyRate) || 0;
   const std = Number(s.standardHours) || 0;
   return std > 0 ? (Number(s.dailyRate) || 0) / std : 0;
 }
 
 function computeLog(log) {
   const s = state.settings;
+  const payType = logPayType(log);
   const regularHours = Number(log.regularHours) || 0;
   const otHours = Number(log.otHours) || 0;
   let regularPay = 0;
-  if (s.payType === 'hourly') {
+  if (payType === 'hourly') {
     regularPay = (Number(s.hourlyRate) || 0) * regularHours;
   } else {
     regularPay = (Number(s.dailyRate) || 0) * regularHours;
   }
-  const otPay = baseHourlyRate() * otHours * (Number(s.otMultiplier) || 1);
+  const otPay = baseHourlyRate(payType) * otHours * (Number(s.otMultiplier) || 1);
   return { regularPay, otPay, total: regularPay + otPay };
+}
+
+function payBadge(log) {
+  const payType = logPayType(log);
+  return payType === 'daily' ? `<span class="pay-badge daily">일급제</span>` : `<span class="pay-badge">시급제</span>`;
+}
+
+function fmtRegular(log) {
+  const n = Number(log.regularHours || 0);
+  return logPayType(log) === 'daily' ? `${n}일` : `${n}h`;
 }
 
 // ---------- 저장/불러오기 ----------
@@ -340,7 +363,7 @@ async function loadData() {
       .maybeSingle();
     if (error) { console.error(error); showToast('데이터를 불러오지 못했어요: ' + error.message, 'error'); return; }
     if (data) {
-      state.settings = Object.assign({ payType: 'hourly', hourlyRate: 0, dailyRate: 0, standardHours: 8, otMultiplier: 1.5 }, data.settings || {});
+      state.settings = Object.assign({ hourlyRate: 0, dailyRate: 0, standardHours: 8, otMultiplier: 1.5 }, data.settings || {});
       state.workLogs = data.work_logs || [];
     }
   } else {
@@ -358,6 +381,8 @@ async function loadData() {
 // ---------- 렌더링 ----------
 function renderAll() {
   renderSettings();
+  updateEntryFormLabel('log-pay-type', 'log-regular-lbl', 'log-regular-hours');
+  updateEntryFormLabel('cal-pay-type', 'cal-regular-lbl', 'cal-add-regular');
   renderLogsTable();
   renderMonthFilter();
   renderHistory();
@@ -368,33 +393,20 @@ function renderAll() {
 
 function renderSettings() {
   const s = state.settings;
-  document.querySelector(`input[name="pay-type"][value="${s.payType}"]`).checked = true;
   document.getElementById('set-hourly-rate').value = s.hourlyRate || '';
   document.getElementById('set-daily-rate').value = s.dailyRate || '';
   document.getElementById('set-standard-hours').value = s.standardHours || 8;
   document.getElementById('set-ot-multiplier').value = s.otMultiplier || 1.5;
-  updateRegularLabels();
 }
 
-function updateRegularLabels() {
-  const payType = document.querySelector('input[name="pay-type"]:checked').value;
+function updateEntryFormLabel(rowName, lblId, inputId) {
+  const payType = document.querySelector(`input[name="${rowName}"]:checked`).value;
   const isDaily = payType === 'daily';
-  const lbl = isDaily ? '근무일수' : '정규 근무시간';
-  const th = isDaily ? '근무일수' : '정규시간';
-  const placeholder = isDaily ? '예: 0.5 (반일)' : '예: 8';
-  const step = isDaily ? '0.1' : '0.5';
-
-  document.getElementById('log-regular-lbl').textContent = lbl;
-  document.getElementById('logs-regular-th').textContent = th;
-  document.getElementById('cal-regular-lbl').textContent = lbl;
-  document.getElementById('cal-regular-th').textContent = th;
-  document.getElementById('history-regular-th').textContent = th;
-
-  ['log-regular-hours', 'cal-add-regular'].forEach(id => {
-    const el = document.getElementById(id);
-    el.placeholder = placeholder;
-    el.step = step;
-  });
+  const lbl = document.getElementById(lblId);
+  const input = document.getElementById(inputId);
+  lbl.textContent = isDaily ? '근무일수' : '정규 근무시간';
+  input.placeholder = isDaily ? '예: 0.5 (반일)' : '예: 8';
+  input.step = isDaily ? '0.1' : '0.5';
 }
 
 function renderLogsTable() {
@@ -402,14 +414,15 @@ function renderLogsTable() {
   const sorted = [...state.workLogs].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   document.getElementById('logs-count-hint').textContent = `총 ${sorted.length}건`;
   if (sorted.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">등록된 근무 기록이 없어요.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">등록된 근무 기록이 없어요.</td></tr>`;
     return;
   }
   tbody.innerHTML = sorted.map(log => `
     <tr>
       <td><input type="checkbox" class="log-check" data-id="${log.id}"></td>
       <td>${log.date || ''}</td>
-      <td class="num">${Number(log.regularHours || 0)}</td>
+      <td>${payBadge(log)}</td>
+      <td class="num">${fmtRegular(log)}</td>
       <td class="num">${Number(log.otHours || 0)}</td>
       <td>${log.memo ? escapeHtml(log.memo) : ''}</td>
       <td><button class="icon-btn danger" data-del="${log.id}">삭제</button></td>
@@ -434,7 +447,7 @@ function renderHistory() {
   document.getElementById('history-count-hint').textContent = `총 ${logs.length}건`;
 
   if (logs.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">표시할 근무 기록이 없어요.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">표시할 근무 기록이 없어요.</td></tr>`;
     tfoot.innerHTML = '';
     return;
   }
@@ -445,7 +458,8 @@ function renderHistory() {
     sumRegular += c.regularPay; sumOt += c.otPay; sumTotal += c.total;
     return `<tr>
       <td>${log.date || ''}</td>
-      <td class="num">${Number(log.regularHours || 0)}</td>
+      <td>${payBadge(log)}</td>
+      <td class="num">${fmtRegular(log)}</td>
       <td class="num">${Number(log.otHours || 0)}</td>
       <td class="num">${fmtWon(c.regularPay)}</td>
       <td class="num">${fmtWon(c.otPay)}</td>
@@ -453,7 +467,7 @@ function renderHistory() {
     </tr>`;
   }).join('');
   tfoot.innerHTML = `<tr style="font-weight:600; border-top: 1px solid var(--ink);">
-    <td colspan="3">합계</td>
+    <td colspan="4">합계</td>
     <td class="num">${fmtWon(sumRegular)}</td>
     <td class="num">${fmtWon(sumOt)}</td>
     <td class="num">${fmtWon(sumTotal)}</td>
@@ -531,7 +545,7 @@ function renderCalDetail() {
 
   if (!selectedDate) {
     titleEl.textContent = '날짜를 선택해 주세요';
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="4">달력에서 날짜를 선택하면 여기에 표시돼요.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">달력에서 날짜를 선택하면 여기에 표시돼요.</td></tr>`;
     addBtn.disabled = true;
     return;
   }
@@ -543,12 +557,13 @@ function renderCalDetail() {
 
   const logs = state.workLogs.filter(l => l.date === selectedDate);
   if (logs.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="4">등록된 근무 기록이 없어요.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">등록된 근무 기록이 없어요.</td></tr>`;
   } else {
     tbody.innerHTML = logs.map(log => {
       const c = computeLog(log);
       return `<tr>
-        <td class="num">${Number(log.regularHours || 0)}</td>
+        <td>${payBadge(log)}</td>
+        <td class="num">${fmtRegular(log)}</td>
         <td class="num">${Number(log.otHours || 0)}</td>
         <td class="num">${fmtWon(c.total)}</td>
         <td><button class="icon-btn danger" data-cal-del="${log.id}">삭제</button></td>
@@ -571,12 +586,11 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
-document.getElementById('pay-type-row').addEventListener('change', updateRegularLabels);
+document.getElementById('log-pay-type-row').addEventListener('change', () => updateEntryFormLabel('log-pay-type', 'log-regular-lbl', 'log-regular-hours'));
+document.getElementById('cal-pay-type-row').addEventListener('change', () => updateEntryFormLabel('cal-pay-type', 'cal-regular-lbl', 'cal-add-regular'));
 
 document.getElementById('save-settings-btn').addEventListener('click', () => {
-  const payType = document.querySelector('input[name="pay-type"]:checked').value;
   state.settings = {
-    payType,
     hourlyRate: Number(document.getElementById('set-hourly-rate').value) || 0,
     dailyRate: Number(document.getElementById('set-daily-rate').value) || 0,
     standardHours: Number(document.getElementById('set-standard-hours').value) || 8,
@@ -590,6 +604,7 @@ document.getElementById('save-settings-btn').addEventListener('click', () => {
 
 document.getElementById('add-log-btn').addEventListener('click', () => {
   const date = document.getElementById('log-date').value;
+  const payType = document.querySelector('input[name="log-pay-type"]:checked').value;
   const regularHours = document.getElementById('log-regular-hours').value;
   const otHours = document.getElementById('log-ot-hours').value;
   const memo = document.getElementById('log-memo').value.trim();
@@ -602,6 +617,7 @@ document.getElementById('add-log-btn').addEventListener('click', () => {
   state.workLogs.push({
     id: uid(),
     date,
+    payType,
     regularHours: Number(regularHours) || 0,
     otHours: Number(otHours) || 0,
     memo
@@ -662,6 +678,7 @@ document.getElementById('cal-next-btn').addEventListener('click', () => {
 
 document.getElementById('cal-add-btn').addEventListener('click', () => {
   if (!selectedDate) return;
+  const payType = document.querySelector('input[name="cal-pay-type"]:checked').value;
   const regularHours = document.getElementById('cal-add-regular').value;
   const otHours = document.getElementById('cal-add-ot').value;
   const memo = document.getElementById('cal-add-memo').value.trim();
@@ -674,6 +691,7 @@ document.getElementById('cal-add-btn').addEventListener('click', () => {
   state.workLogs.push({
     id: uid(),
     date: selectedDate,
+    payType,
     regularHours: Number(regularHours) || 0,
     otHours: Number(otHours) || 0,
     memo
