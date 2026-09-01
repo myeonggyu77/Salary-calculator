@@ -996,6 +996,26 @@ document.getElementById('cal-next-btn').addEventListener('click', () => {
   renderCalendar();
 });
 
+(() => {
+  const calGrid = document.getElementById('cal-grid');
+  let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+  calGrid.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+  }, { passive: true });
+  calGrid.addEventListener('touchend', (e) => {
+    if (e.changedTouches.length !== 1) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if (Date.now() - touchStartTime > 600) return;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    calendarDate.setMonth(calendarDate.getMonth() + (dx < 0 ? 1 : -1));
+    renderCalendar();
+  }, { passive: true });
+})();
+
 document.getElementById('cal-modal-close').addEventListener('click', closeCalModal);
 document.getElementById('cal-modal-overlay').addEventListener('click', (e) => {
   if (e.target.id === 'cal-modal-overlay') closeCalModal();
