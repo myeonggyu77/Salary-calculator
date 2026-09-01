@@ -998,6 +998,15 @@ document.getElementById('cal-next-btn').addEventListener('click', () => {
 
 (() => {
   const calGrid = document.getElementById('cal-grid');
+
+  function trySwipeNav(dx, dy, dt) {
+    if (dt > 600) return false;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return false;
+    calendarDate.setMonth(calendarDate.getMonth() + (dx < 0 ? 1 : -1));
+    renderCalendar();
+    return true;
+  }
+
   let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
   calGrid.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) return;
@@ -1009,11 +1018,31 @@ document.getElementById('cal-next-btn').addEventListener('click', () => {
     if (e.changedTouches.length !== 1) return;
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
-    if (Date.now() - touchStartTime > 600) return;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    calendarDate.setMonth(calendarDate.getMonth() + (dx < 0 ? 1 : -1));
-    renderCalendar();
+    trySwipeNav(dx, dy, Date.now() - touchStartTime);
   }, { passive: true });
+
+  let mouseDown = false, mouseStartX = 0, mouseStartY = 0, mouseStartTime = 0, didDrag = false;
+  calGrid.addEventListener('mousedown', (e) => {
+    mouseDown = true;
+    didDrag = false;
+    mouseStartX = e.clientX;
+    mouseStartY = e.clientY;
+    mouseStartTime = Date.now();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!mouseDown) return;
+    if (Math.abs(e.clientX - mouseStartX) > 10 || Math.abs(e.clientY - mouseStartY) > 10) didDrag = true;
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (!mouseDown) return;
+    mouseDown = false;
+    const dx = e.clientX - mouseStartX;
+    const dy = e.clientY - mouseStartY;
+    trySwipeNav(dx, dy, Date.now() - mouseStartTime);
+  });
+  calGrid.addEventListener('click', (e) => {
+    if (didDrag) { e.stopPropagation(); e.preventDefault(); didDrag = false; }
+  }, true);
 })();
 
 document.getElementById('cal-modal-close').addEventListener('click', closeCalModal);
