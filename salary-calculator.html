@@ -80,7 +80,7 @@
   .form-actions { display: flex; gap: 8px; justify-content: flex-end; }
   .field-lbl { font-size: 10px; color: var(--ink-faint); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
   .field { margin-bottom: 10px; }
-  .radio-row { display: flex; gap: 16px; align-items: center; height: 34px; }
+  .radio-row { display: flex; gap: 16px; align-items: center; min-height: 34px; flex-wrap: wrap; }
   .radio-row label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
   .radio-row input[type="radio"] { width: auto; height: auto; }
 
@@ -151,6 +151,8 @@
 
   .pay-badge { display: inline-block; font-size: 11px; font-family: var(--mono); padding: 2px 7px; border-radius: 3px; background: var(--line-soft); color: var(--ink-soft); white-space: nowrap; }
   .pay-badge.daily { background: var(--accent-soft); color: var(--accent); }
+  .pay-badge.usd { background: #e7eefb; color: #2563a8; }
+  .money-usd { color: var(--ink-faint); font-size: 11px; }
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(26, 36, 32, 0.45); display: flex; align-items: center; justify-content: center; z-index: 60; padding: 20px; }
   .modal-card { background: var(--paper-raised); border-radius: 8px; padding: 20px; width: 100%; max-width: 420px; max-height: 88vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
@@ -197,6 +199,7 @@
     <div>
       <h1>급여 계산기</h1>
       <div class="sub" id="mode-sub"></div>
+      <div class="sub" id="fx-rate-sub"></div>
     </div>
     <div class="btn-group">
       <button class="ghost-btn" id="toggle-amounts-btn">금액 가리기</button>
@@ -292,11 +295,23 @@
         <div class="radio-row" id="cal-pay-type-row">
           <label><input type="radio" name="cal-pay-type" value="hourly" checked> 시급제</label>
           <label><input type="radio" name="cal-pay-type" value="daily"> 일급제</label>
+          <label><input type="radio" name="cal-pay-type" value="usd_daily"> 일급+시급(미국)</label>
         </div>
       </div>
       <div class="form-grid">
-        <div class="field"><div class="field-lbl" id="cal-rate-lbl">시급 (원)</div><input type="number" id="cal-add-rate" min="0" step="10"></div>
+        <div class="field" id="cal-rate-field"><div class="field-lbl" id="cal-rate-lbl">시급 (원)</div><input type="number" id="cal-add-rate" min="0" step="10"></div>
         <div class="field" id="cal-ot-multiplier-field"><div class="field-lbl">연장 할증률</div><input type="number" id="cal-add-ot-multiplier" min="1" step="0.1" value="1.5"></div>
+      </div>
+      <div id="cal-usd-fields" style="display:none;">
+        <div class="form-note" id="cal-fx-hint"></div>
+        <div class="form-grid">
+          <div class="field"><div class="field-lbl">하루 일당 (USD)</div><input type="number" id="cal-usd-daily-usd" min="0" step="0.01"></div>
+          <div class="field"><div class="field-lbl">하루 일당 (원화)</div><input type="number" id="cal-usd-daily-krw" min="0" step="10"></div>
+        </div>
+        <div class="form-grid">
+          <div class="field"><div class="field-lbl">연장 시급 (USD)</div><input type="number" id="cal-usd-ot-usd" min="0" step="0.01"></div>
+          <div class="field"><div class="field-lbl">연장 시급 (원화)</div><input type="number" id="cal-usd-ot-krw" min="0" step="10"></div>
+        </div>
       </div>
       <div class="form-grid">
         <div class="field"><div class="field-lbl" id="cal-regular-lbl">정규 근무시간</div>
@@ -367,9 +382,37 @@ let currentUser = null;
 let saveTimer = null;
 
 let state = {
-  settings: { lastHourlyRate: 0, lastDailyRate: 0, lastOtMultiplier: 1.5 },
+  settings: { lastHourlyRate: 0, lastDailyRate: 0, lastOtMultiplier: 1.5, lastUsdDailyRate: 0, lastUsdOtRate: 0 },
   workLogs: []
 };
+
+// ---------- 환율(달러↔원화) ----------
+let usdKrwRate = 1400; // 실시간 환율을 못 가져왔을 때 쓰는 기본값
+
+async function fetchUsdKrwRate() {
+  try {
+    const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=KRW');
+    const data = await res.json();
+    if (data && data.rates && data.rates.KRW) { usdKrwRate = data.rates.KRW; return; }
+    throw new Error('rate missing');
+  } catch (e) {
+    try {
+      const res2 = await fetch('https://open.er-api.com/v6/latest/USD');
+      const data2 = await res2.json();
+      if (data2 && data2.rates && data2.rates.KRW) { usdKrwRate = data2.rates.KRW; return; }
+    } catch (e2) {
+      console.error('환율 조회 실패, 기본값(₩' + usdKrwRate + ')을 사용해요.', e2);
+    }
+  }
+}
+
+function updateFxHint() {
+  const text = `현재 환율: $1 = ${Math.round(usdKrwRate).toLocaleString('ko-KR')}원 (자동 적용)`;
+  const fxHint = document.getElementById('cal-fx-hint');
+  if (fxHint) fxHint.textContent = text;
+  const fxSub = document.getElementById('fx-rate-sub');
+  if (fxSub) fxSub.textContent = `환율 $1 = ₩${Math.round(usdKrwRate).toLocaleString('ko-KR')}`;
+}
 
 let amountsHidden = false;
 try { amountsHidden = localStorage.getItem('salary_amounts_hidden') === '1'; } catch (e) {}
@@ -406,6 +449,31 @@ function fmtWonChart(n) {
   return Math.round(v / 10000) + '만';
 }
 
+function fmtUsd(n) {
+  if (amountsHidden) return '$＊＊';
+  return '$' + (Math.round((n || 0) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtUsdChart(n) {
+  if (amountsHidden) return '';
+  const v = Math.round(n || 0);
+  if (v === 0) return '';
+  return '$' + v.toLocaleString('en-US');
+}
+
+// 원화 금액과 달러 환산액을 함께 표기 (표·요약 등 일반 위치용)
+function fmtMoney(krw, usd) {
+  if (amountsHidden) return fmtWon(krw);
+  return `${fmtWon(krw)} <span class="money-usd">(${fmtUsd(usd)})</span>`;
+}
+
+// 달력 칸처럼 좁은 공간에서 쓰는 짧은 이중통화 표기
+function fmtMoneyCompact(krw, usd) {
+  if (amountsHidden) return fmtWonCompact(krw);
+  const usdPart = fmtUsdChart(usd);
+  return usdPart ? `${fmtWonCompact(krw)} · ${usdPart}` : fmtWonCompact(krw);
+}
+
 function workTierClass(n) {
   if (n < 1 - 0.001) return 'tier-low';
   if (n <= 1 + 0.001) return 'tier-normal';
@@ -414,10 +482,29 @@ function workTierClass(n) {
 }
 
 // ---------- 계산 로직 ----------
-function logPayType(log) { return log.payType === 'daily' ? 'daily' : 'hourly'; }
+function logPayType(log) {
+  if (log.payType === 'daily') return 'daily';
+  if (log.payType === 'usd_daily') return 'usd_daily';
+  return 'hourly';
+}
 
 function computeLog(log) {
   const payType = logPayType(log);
+
+  if (payType === 'usd_daily') {
+    const regularHours = Number(log.regularHours) || 0;
+    const otHours = Number(log.otHours) || 0;
+    const regularPayUsd = (Number(log.dailyRateUsd) || 0) * regularHours;
+    const otPayUsd = (Number(log.otRateUsd) || 0) * otHours;
+    const totalUsd = regularPayUsd + otPayUsd;
+    return {
+      regularPayUsd, otPayUsd, totalUsd,
+      regularPay: regularPayUsd * usdKrwRate,
+      otPay: otPayUsd * usdKrwRate,
+      total: totalUsd * usdKrwRate
+    };
+  }
+
   const rate = Number(log.rate) || 0;
   const regularHours = Number(log.regularHours) || 0;
   const otHours = Number(log.otHours) || 0;
@@ -428,27 +515,45 @@ function computeLog(log) {
   } else {
     otPay = rate * otHours;
   }
-  return { regularPay, otPay, total: regularPay + otPay };
+  const total = regularPay + otPay;
+  return {
+    regularPay, otPay, total,
+    regularPayUsd: regularPay / usdKrwRate,
+    otPayUsd: otPay / usdKrwRate,
+    totalUsd: total / usdKrwRate
+  };
 }
 
 function payBadge(log) {
   const payType = logPayType(log);
-  return payType === 'daily' ? `<span class="pay-badge daily">일급제</span>` : `<span class="pay-badge">시급제</span>`;
+  if (payType === 'daily') return `<span class="pay-badge daily">일급제</span>`;
+  if (payType === 'usd_daily') return `<span class="pay-badge usd">일급+시급(미국)</span>`;
+  return `<span class="pay-badge">시급제</span>`;
+}
+
+function fmtBaseRate(log) {
+  const payType = logPayType(log);
+  if (payType === 'usd_daily') {
+    return `${fmtUsd(log.dailyRateUsd)}/일<br><span class="money-usd">연장 ${fmtUsd(log.otRateUsd)}/h</span>`;
+  }
+  return fmtWon(log.rate);
 }
 
 function fmtRegular(log) {
-  if (logPayType(log) === 'daily' && log.dayStatus === 'off') return '휴무';
+  const payType = logPayType(log);
+  if (payType !== 'hourly' && log.dayStatus === 'off') return '휴무';
   const n = Number(log.regularHours || 0);
-  return logPayType(log) === 'daily' ? `${n}일` : `${n}h`;
+  return payType !== 'hourly' ? `${n}일` : `${n}h`;
 }
 
 function isOffOnlyDay(logs) {
-  return logs.length > 0 && logs.every(log => logPayType(log) === 'daily' && log.dayStatus === 'off' && Number(log.otHours || 0) === 0);
+  return logs.length > 0 && logs.every(log => logPayType(log) !== 'hourly' && log.dayStatus === 'off' && Number(log.otHours || 0) === 0);
 }
 
 function fmtOt(log) {
+  const payType = logPayType(log);
   const n = Number(log.otHours || 0);
-  return logPayType(log) === 'daily' ? `${n}일` : `${n}h`;
+  return payType === 'daily' ? `${n}일` : `${n}h`;
 }
 
 // ---------- 저장/불러오기 ----------
@@ -488,7 +593,7 @@ async function loadData() {
       .maybeSingle();
     if (error) { console.error(error); showToast('데이터를 불러오지 못했어요: ' + error.message, 'error'); return; }
     if (data) {
-      state.settings = Object.assign({ lastHourlyRate: 0, lastDailyRate: 0, lastOtMultiplier: 1.5 }, data.settings || {});
+      state.settings = Object.assign({ lastHourlyRate: 0, lastDailyRate: 0, lastOtMultiplier: 1.5, lastUsdDailyRate: 0, lastUsdOtRate: 0 }, data.settings || {});
       state.workLogs = data.work_logs || [];
     }
   } else {
@@ -517,29 +622,63 @@ const FORM_SCOPES = {
   cal: { radioName: 'cal-pay-type', regularLbl: 'cal-regular-lbl', regularInput: 'cal-add-regular', dailyStatusInput: 'cal-daily-status', otLbl: 'cal-ot-lbl', otInput: 'cal-add-ot', otDailySelect: 'cal-add-ot-daily', rateLbl: 'cal-rate-lbl', rateInput: 'cal-add-rate', otMultField: 'cal-ot-multiplier-field', otMultInput: 'cal-add-ot-multiplier' }
 };
 
+function linkCurrencyInputs(usdInput, krwInput) {
+  usdInput.addEventListener('input', () => {
+    if (usdInput.value === '') { krwInput.value = ''; return; }
+    const usd = Number(usdInput.value);
+    if (!isNaN(usd)) krwInput.value = Math.round(usd * usdKrwRate);
+  });
+  krwInput.addEventListener('input', () => {
+    if (krwInput.value === '') { usdInput.value = ''; return; }
+    const krw = Number(krwInput.value);
+    if (!isNaN(krw)) usdInput.value = (krw / usdKrwRate).toFixed(2);
+  });
+}
+
+function setLinkedUsdValue(usdInput, krwInput, usd) {
+  usdInput.value = usd;
+  krwInput.value = Math.round((Number(usd) || 0) * usdKrwRate);
+}
+
 function updateEntryForm(scopeKey) {
   const cfg = FORM_SCOPES[scopeKey];
   const payType = document.querySelector(`input[name="${cfg.radioName}"]:checked`).value;
   const isDaily = payType === 'daily';
+  const isUsdDaily = payType === 'usd_daily';
+  const isDayBased = isDaily || isUsdDaily;
 
-  document.getElementById(cfg.regularLbl).textContent = isDaily ? '근무 구분' : '정규 근무시간';
+  document.getElementById(cfg.regularLbl).textContent = isDayBased ? '근무 구분' : '정규 근무시간';
   const regularInput = document.getElementById(cfg.regularInput);
   const dailyStatusInput = document.getElementById(cfg.dailyStatusInput);
-  regularInput.style.display = isDaily ? 'none' : '';
-  dailyStatusInput.style.display = isDaily ? '' : 'none';
+  regularInput.style.display = isDayBased ? 'none' : '';
+  dailyStatusInput.style.display = isDayBased ? '' : 'none';
 
   document.getElementById(cfg.otLbl).textContent = isDaily ? '추가(연장) 근무일수' : '추가(연장) 근무시간';
   document.getElementById(cfg.otInput).style.display = isDaily ? 'none' : '';
   document.getElementById(cfg.otDailySelect).style.display = isDaily ? '' : 'none';
   document.getElementById(cfg.rateLbl).textContent = isDaily ? '일급 (원)' : '시급 (원)';
-  document.getElementById(cfg.otMultField).style.display = isDaily ? 'none' : '';
 
-  const rateInput = document.getElementById(cfg.rateInput);
-  const lastRate = isDaily ? state.settings.lastDailyRate : state.settings.lastHourlyRate;
-  if (lastRate && !rateInput.value) rateInput.value = lastRate;
+  document.getElementById('cal-rate-field').style.display = isUsdDaily ? 'none' : '';
+  document.getElementById(cfg.otMultField).style.display = (isDaily || isUsdDaily) ? 'none' : '';
+  document.getElementById('cal-usd-fields').style.display = isUsdDaily ? '' : 'none';
 
-  const otMultInput = document.getElementById(cfg.otMultInput);
-  if (state.settings.lastOtMultiplier && otMultInput.value === '1.5') otMultInput.value = state.settings.lastOtMultiplier;
+  if (!isUsdDaily) {
+    const rateInput = document.getElementById(cfg.rateInput);
+    const lastRate = isDaily ? state.settings.lastDailyRate : state.settings.lastHourlyRate;
+    if (lastRate && !rateInput.value) rateInput.value = lastRate;
+
+    const otMultInput = document.getElementById(cfg.otMultInput);
+    if (state.settings.lastOtMultiplier && otMultInput.value === '1.5') otMultInput.value = state.settings.lastOtMultiplier;
+  } else {
+    const usdDailyInput = document.getElementById('cal-usd-daily-usd');
+    const usdDailyKrwInput = document.getElementById('cal-usd-daily-krw');
+    const usdOtInput = document.getElementById('cal-usd-ot-usd');
+    const usdOtKrwInput = document.getElementById('cal-usd-ot-krw');
+    if (state.settings.lastUsdDailyRate && !usdDailyInput.value) setLinkedUsdValue(usdDailyInput, usdDailyKrwInput, state.settings.lastUsdDailyRate);
+    if (state.settings.lastUsdOtRate && !usdOtInput.value) setLinkedUsdValue(usdOtInput, usdOtKrwInput, state.settings.lastUsdOtRate);
+  }
+
+  updateFxHint();
 }
 
 let logsMonthDate = new Date();
@@ -562,21 +701,22 @@ function renderLogsTable() {
     return;
   }
 
-  let sumRegular = 0, sumOt = 0, sumTotal = 0;
+  let sumRegular = 0, sumOt = 0, sumTotal = 0, sumRegularUsd = 0, sumOtUsd = 0, sumTotalUsd = 0;
   tbody.innerHTML = sorted.map(log => {
     const c = computeLog(log);
     sumRegular += c.regularPay; sumOt += c.otPay; sumTotal += c.total;
+    sumRegularUsd += c.regularPayUsd; sumOtUsd += c.otPayUsd; sumTotalUsd += c.totalUsd;
     return `
     <tr>
       <td><input type="checkbox" class="log-check" data-id="${log.id}"></td>
       <td>${log.date || ''}</td>
       <td>${payBadge(log)}</td>
-      <td class="num">${fmtWon(log.rate)}</td>
+      <td class="num">${fmtBaseRate(log)}</td>
       <td class="num">${fmtRegular(log)}</td>
       <td class="num">${fmtOt(log)}</td>
-      <td class="num">${fmtWon(c.regularPay)}</td>
-      <td class="num">${fmtWon(c.otPay)}</td>
-      <td class="num">${fmtWon(c.total)}</td>
+      <td class="num">${fmtMoney(c.regularPay, c.regularPayUsd)}</td>
+      <td class="num">${fmtMoney(c.otPay, c.otPayUsd)}</td>
+      <td class="num">${fmtMoney(c.total, c.totalUsd)}</td>
       <td>${log.memo ? escapeHtml(log.memo) : ''}</td>
       <td><button class="icon-btn danger" data-del="${log.id}">삭제</button></td>
     </tr>
@@ -584,9 +724,9 @@ function renderLogsTable() {
   }).join('');
   tfoot.innerHTML = `<tr style="font-weight:600; border-top: 1px solid var(--ink);">
     <td colspan="6">합계</td>
-    <td class="num">${fmtWon(sumRegular)}</td>
-    <td class="num">${fmtWon(sumOt)}</td>
-    <td class="num">${fmtWon(sumTotal)}</td>
+    <td class="num">${fmtMoney(sumRegular, sumRegularUsd)}</td>
+    <td class="num">${fmtMoney(sumOt, sumOtUsd)}</td>
+    <td class="num">${fmtMoney(sumTotal, sumTotalUsd)}</td>
     <td colspan="2"></td>
   </tr>`;
 }
@@ -595,14 +735,14 @@ function renderKpis() {
   const monthNum = logsMonthDate.getMonth() + 1;
   const monthFilter = `${logsMonthDate.getFullYear()}-${pad2(monthNum)}`;
   const logs = state.workLogs.filter(l => (l.date || '').startsWith(monthFilter));
-  let sumRegular = 0, sumOt = 0;
-  logs.forEach(log => { const c = computeLog(log); sumRegular += c.regularPay; sumOt += c.otPay; });
+  let sumRegular = 0, sumOt = 0, sumRegularUsd = 0, sumOtUsd = 0;
+  logs.forEach(log => { const c = computeLog(log); sumRegular += c.regularPay; sumOt += c.otPay; sumRegularUsd += c.regularPayUsd; sumOtUsd += c.otPayUsd; });
   document.getElementById('kpi-lbl-regular').textContent = `${monthNum}월 정규급여`;
   document.getElementById('kpi-lbl-ot').textContent = `${monthNum}월 연장근무수당`;
   document.getElementById('kpi-lbl-total').textContent = `${monthNum}월 합계`;
-  document.getElementById('kpi-regular').textContent = fmtWon(sumRegular);
-  document.getElementById('kpi-ot').textContent = fmtWon(sumOt);
-  document.getElementById('kpi-total').textContent = fmtWon(sumRegular + sumOt);
+  document.getElementById('kpi-regular').innerHTML = fmtMoney(sumRegular, sumRegularUsd);
+  document.getElementById('kpi-ot').innerHTML = fmtMoney(sumOt, sumOtUsd);
+  document.getElementById('kpi-total').innerHTML = fmtMoney(sumRegular + sumOt, sumRegularUsd + sumOtUsd);
 }
 
 // ---------- 급여현황 ----------
@@ -612,11 +752,14 @@ function renderDashboard() {
   document.getElementById('dash-year-title').textContent = `${dashYear}년`;
 
   const monthlyTotals = new Array(12).fill(0);
+  const monthlyTotalsUsd = new Array(12).fill(0);
   state.workLogs.forEach(log => {
     if (!log.date) return;
     const [y, m] = log.date.split('-').map(Number);
     if (y !== dashYear) return;
-    monthlyTotals[m - 1] += computeLog(log).total;
+    const c = computeLog(log);
+    monthlyTotals[m - 1] += c.total;
+    monthlyTotalsUsd[m - 1] += c.totalUsd;
   });
 
   const maxVal = Math.max(...monthlyTotals, 0);
@@ -630,18 +773,21 @@ function renderDashboard() {
     if (v > 0) cls += ' has-value';
     if (isMax) cls += ' is-max';
     const colCls = 'dash-bar-col' + (i === currentMonthIdx ? ' is-current' : '');
+    const valText = v > 0 ? fmtMoneyCompact(v, monthlyTotalsUsd[i]) : '';
     return `<div class="${colCls}">
-      <div class="dash-bar-val">${v > 0 ? fmtWonChart(v) : ''}</div>
+      <div class="dash-bar-val">${valText}</div>
       <div class="${cls}" style="height:${heightPct}%"></div>
       <div class="dash-bar-label">${i + 1}</div>
     </div>`;
   }).join('');
 
   const yearTotal = monthlyTotals.reduce((a, b) => a + b, 0);
+  const yearTotalUsd = monthlyTotalsUsd.reduce((a, b) => a + b, 0);
   const monthsWithData = monthlyTotals.filter(v => v > 0).length;
   const avg = monthsWithData > 0 ? yearTotal / monthsWithData : 0;
-  document.getElementById('dash-year-total').textContent = fmtWon(yearTotal);
-  document.getElementById('dash-year-avg').textContent = fmtWon(avg);
+  const avgUsd = monthsWithData > 0 ? yearTotalUsd / monthsWithData : 0;
+  document.getElementById('dash-year-total').innerHTML = fmtMoney(yearTotal, yearTotalUsd);
+  document.getElementById('dash-year-avg').innerHTML = fmtMoney(avg, avgUsd);
 
   const analysisList = document.getElementById('dash-analysis-list');
   if (monthsWithData === 0) {
@@ -657,9 +803,9 @@ function renderDashboard() {
   });
 
   const items = [];
-  items.push(`올해 총 <strong>${fmtWon(yearTotal)}</strong>을 벌었고, 기록이 있는 ${monthsWithData}개월 평균은 <strong>${fmtWon(avg)}</strong>이에요.`);
-  if (maxIdx !== -1) items.push(`가장 많이 번 달은 <strong>${maxIdx + 1}월(${fmtWon(monthlyTotals[maxIdx])})</strong>이에요.`);
-  if (minIdx !== -1 && minIdx !== maxIdx) items.push(`가장 적게 번 달은 <strong>${minIdx + 1}월(${fmtWon(monthlyTotals[minIdx])})</strong>이에요.`);
+  items.push(`올해 총 <strong>${fmtMoney(yearTotal, yearTotalUsd)}</strong>을 벌었고, 기록이 있는 ${monthsWithData}개월 평균은 <strong>${fmtMoney(avg, avgUsd)}</strong>이에요.`);
+  if (maxIdx !== -1) items.push(`가장 많이 번 달은 <strong>${maxIdx + 1}월(${fmtMoney(monthlyTotals[maxIdx], monthlyTotalsUsd[maxIdx])})</strong>이에요.`);
+  if (minIdx !== -1 && minIdx !== maxIdx) items.push(`가장 적게 번 달은 <strong>${minIdx + 1}월(${fmtMoney(monthlyTotals[minIdx], monthlyTotalsUsd[minIdx])})</strong>이에요.`);
 
   const monthsWithIdx = monthlyTotals.map((v, i) => ({ v, i })).filter(o => o.v > 0);
   const last = monthsWithIdx[monthsWithIdx.length - 1];
@@ -762,7 +908,7 @@ function renderCalendar() {
 
   for (let i = 0; i < firstWeekday; i++) html += `<div class="cal-cell empty"></div>`;
 
-  let monthWorkTotal = 0, monthPayTotal = 0;
+  let monthWorkTotal = 0, monthPayTotal = 0, monthPayTotalUsd = 0;
 
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = dateStr(y, m, d);
@@ -782,13 +928,15 @@ function renderCalendar() {
     if (logs.length > 0) {
       const workAmount = logs.reduce((sum, log) => sum + Number(log.regularHours || 0) + Number(log.otHours || 0), 0);
       const total = logs.reduce((sum, log) => sum + computeLog(log).total, 0);
+      const totalUsd = logs.reduce((sum, log) => sum + computeLog(log).totalUsd, 0);
       monthWorkTotal += workAmount;
       monthPayTotal += total;
+      monthPayTotalUsd += totalUsd;
       if (isOffOnlyDay(logs)) {
         badgeLine = `<div class="cal-work-badge tier-off">휴무</div>`;
       } else {
         badgeLine = `<div class="cal-work-badge ${workTierClass(workAmount)}">${workAmount}</div>`;
-        payLine = `<div class="cal-pay">${fmtWonCompact(total)}</div>`;
+        payLine = `<div class="cal-pay">${fmtMoneyCompact(total, totalUsd)}</div>`;
       }
     }
     html += `<div class="${classes}" data-date="${ds}"><div class="cal-daynum${dowClass}">${d}</div>${badgeLine}${payLine}</div>`;
@@ -796,7 +944,7 @@ function renderCalendar() {
 
   document.getElementById('cal-grid').innerHTML = html;
   document.getElementById('cal-month-work').textContent = monthWorkTotal.toFixed(2).replace(/\.?0+$/, '') || '0';
-  document.getElementById('cal-month-pay').textContent = fmtWon(monthPayTotal);
+  document.getElementById('cal-month-pay').innerHTML = fmtMoney(monthPayTotal, monthPayTotalUsd);
 
   document.querySelectorAll('.cal-cell:not(.empty)').forEach(cell => {
     cell.addEventListener('click', () => {
@@ -863,10 +1011,10 @@ function renderCalDetail() {
       const c = computeLog(log);
       return `<tr>
         <td>${payBadge(log)}</td>
-        <td class="num">${fmtWon(log.rate)}</td>
+        <td class="num">${fmtBaseRate(log)}</td>
         <td class="num">${fmtRegular(log)}</td>
         <td class="num">${fmtOt(log)}</td>
-        <td class="num">${fmtWon(c.total)}</td>
+        <td class="num">${fmtMoney(c.total, c.totalUsd)}</td>
         <td><button class="icon-btn danger" data-cal-del="${log.id}">삭제</button></td>
       </tr>`;
     }).join('');
@@ -895,10 +1043,13 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 document.getElementById('cal-pay-type-row').addEventListener('change', () => updateEntryForm('cal'));
 
+linkCurrencyInputs(document.getElementById('cal-usd-daily-usd'), document.getElementById('cal-usd-daily-krw'));
+linkCurrencyInputs(document.getElementById('cal-usd-ot-usd'), document.getElementById('cal-usd-ot-krw'));
+
 function readRegularEntry(scopeKey) {
   const cfg = FORM_SCOPES[scopeKey];
   const payType = document.querySelector(`input[name="${cfg.radioName}"]:checked`).value;
-  if (payType === 'daily') {
+  if (payType === 'daily' || payType === 'usd_daily') {
     const v = document.getElementById(cfg.dailyStatusInput).value;
     const dayStatus = v === 'off' ? 'off' : (v === '1' ? 'work' : 'half');
     return { payType, regularHours: v === 'off' ? 0 : Number(v), dayStatus, hasRegular: true };
@@ -914,13 +1065,18 @@ function readOtEntry(scopeKey) {
     const v = document.getElementById(cfg.otDailySelect).value;
     return { otHours: Number(v) || 0, raw: v };
   }
+  // 시급제 & 일급+시급(미국) 둘 다 실제 연장근무 시간을 그대로 입력받아요
   const raw = document.getElementById(cfg.otInput).value;
   return { otHours: Number(raw) || 0, raw };
 }
 
-function rememberRate(payType, rate, otMultiplier) {
-  if (payType === 'daily') state.settings.lastDailyRate = rate;
-  else {
+function rememberRate(payType, rate, otMultiplier, extra) {
+  if (payType === 'daily') {
+    state.settings.lastDailyRate = rate;
+  } else if (payType === 'usd_daily') {
+    state.settings.lastUsdDailyRate = extra.dailyRateUsd;
+    state.settings.lastUsdOtRate = extra.otRateUsd;
+  } else {
     state.settings.lastHourlyRate = rate;
     state.settings.lastOtMultiplier = otMultiplier;
   }
@@ -1095,8 +1251,6 @@ document.getElementById('cal-add-btn').addEventListener('click', () => {
 
   const entry = readRegularEntry('cal');
   const otEntry = readOtEntry('cal');
-  const rate = Number(document.getElementById('cal-add-rate').value) || 0;
-  const otMultiplier = Number(document.getElementById('cal-add-ot-multiplier').value) || 1.5;
   const memo = document.getElementById('cal-add-memo').value.trim();
 
   if (!entry.hasRegular && otEntry.raw === '') {
@@ -1106,25 +1260,31 @@ document.getElementById('cal-add-btn').addEventListener('click', () => {
 
   if (!confirmDuplicateDates(targetDates)) return;
 
+  let logBase;
+  if (entry.payType === 'usd_daily') {
+    const dailyRateUsd = Number(document.getElementById('cal-usd-daily-usd').value) || 0;
+    const otRateUsd = Number(document.getElementById('cal-usd-ot-usd').value) || 0;
+    logBase = { payType: entry.payType, dailyRateUsd, otRateUsd, regularHours: entry.regularHours, dayStatus: entry.dayStatus, otHours: otEntry.otHours };
+    rememberRate(entry.payType, null, null, { dailyRateUsd, otRateUsd });
+  } else {
+    const rate = Number(document.getElementById('cal-add-rate').value) || 0;
+    const otMultiplier = Number(document.getElementById('cal-add-ot-multiplier').value) || 1.5;
+    logBase = { payType: entry.payType, rate, otMultiplier, regularHours: entry.regularHours, dayStatus: entry.dayStatus, otHours: otEntry.otHours };
+    rememberRate(entry.payType, rate, otMultiplier);
+  }
+
   targetDates.forEach(date => {
-    state.workLogs.push({
-      id: uid(),
-      date,
-      payType: entry.payType,
-      rate,
-      otMultiplier,
-      regularHours: entry.regularHours,
-      dayStatus: entry.dayStatus,
-      otHours: otEntry.otHours,
-      memo
-    });
+    state.workLogs.push(Object.assign({ id: uid(), date, memo }, logBase));
   });
-  rememberRate(entry.payType, rate, otMultiplier);
   document.getElementById('cal-add-regular').value = '';
   document.getElementById('cal-daily-status').value = '1';
   document.getElementById('cal-add-ot').value = '';
   document.getElementById('cal-add-ot-daily').value = '0';
   document.getElementById('cal-add-memo').value = '';
+  document.getElementById('cal-usd-daily-usd').value = '';
+  document.getElementById('cal-usd-daily-krw').value = '';
+  document.getElementById('cal-usd-ot-usd').value = '';
+  document.getElementById('cal-usd-ot-krw').value = '';
 
   scheduleSave();
   renderLogsTable();
@@ -1234,8 +1394,12 @@ async function startApp() {
   document.getElementById('mode-sub').textContent = usingSupabase ? (currentUser.email || '') : '로컬 저장 모드';
   applyAmountsHiddenLabel();
   updateKpiRowVisibility('calendar');
+  updateFxHint();
   await loadData();
   renderAll();
+
+  // 환율은 기본값으로 먼저 화면을 그린 뒤, 실시간 값이 오면 다시 그려서 정확한 금액으로 갱신해요.
+  fetchUsdKrwRate().then(() => { updateFxHint(); renderAll(); });
 }
 
 init();
