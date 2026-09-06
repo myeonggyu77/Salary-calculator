@@ -37,6 +37,11 @@
   body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); }
   .app { max-width: 900px; margin: 0 auto; padding: 28px 24px 60px; }
 
+  /* PC(넓은 화면)에서는 레이아웃을 1.5배 키워서 보여줘요. 휴대폰(좁은 화면)은 그대로예요. */
+  @media (min-width: 1024px) {
+    .app { zoom: 1.5; }
+  }
+
   .masthead { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; row-gap: 10px; margin-bottom: 22px; padding-bottom: 16px; border-bottom: 1px solid var(--ink); }
   .masthead h1 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
   .masthead .sub { font-size: 12px; color: var(--ink-faint); font-family: var(--mono); }
@@ -99,7 +104,7 @@
   .cal-dow { font-size: 11px; color: var(--ink-faint); text-align: center; padding: 4px 0; }
   .cal-dow.sun { color: var(--down); }
   .cal-dow.sat { color: #2563a8; }
-  .cal-cell { height: 76px; border: 1px solid var(--line); border-radius: 4px; padding: 5px 4px; cursor: pointer; background: var(--paper-raised); display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+  .cal-cell { min-height: 76px; border: 1px solid var(--line); border-radius: 4px; padding: 5px 4px; cursor: pointer; background: var(--paper-raised); display: flex; flex-direction: column; align-items: center; overflow: hidden; }
   .cal-cell.empty { border: none; background: none; cursor: default; }
   .cal-cell:hover:not(.empty) { border-color: var(--accent); }
   .cal-cell.has-log { background: var(--accent-tint); }
@@ -120,7 +125,9 @@
   .cal-work-badge.tier-high { background: #dc2626; }
   .cal-work-badge.tier-vhigh { background: #7e22ce; }
   .cal-work-badge.tier-off { background: var(--ink-faint); font-size: 11px; }
-  .cal-pay { font-size: 10px; font-family: var(--mono); color: var(--ink-soft); margin-top: 3px; white-space: nowrap; max-width: 100%; }
+  .cal-work-badge.tier-hourly { background: #2563a8; }
+  .cal-work-badge + .cal-work-badge { margin-top: 2px; }
+  .cal-pay { font-size: 9px; line-height: 1.25; font-family: var(--mono); color: var(--ink-soft); margin-top: 3px; text-align: center; max-width: 100%; }
   .cal-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; font-size: 11px; color: var(--ink-soft); }
   .cal-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
   .cal-month-summary { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 14px; }
@@ -270,9 +277,18 @@
       <span><span class="dot" style="background:var(--ink-faint);"></span>휴무</span>
       <span><span class="dot" style="background:var(--down-soft); box-shadow: inset 0 0 0 1px var(--down);"></span>공휴일/일요일</span>
     </div>
+    <div class="cal-legend" style="margin-top:2px;">
+      <span style="color:var(--ink-faint);">연장시간(일급+시급 미국):</span>
+      <span><span class="dot" style="background:#64748b;"></span>1~2H</span>
+      <span><span class="dot" style="background:#d97a1f;"></span>3~4H</span>
+      <span><span class="dot" style="background:#dc2626;"></span>5~6H</span>
+      <span><span class="dot" style="background:#7e22ce;"></span>7~8H+</span>
+      <span><span class="dot" style="background:#2563a8;"></span>시급제 근무시간</span>
+    </div>
 
     <div class="cal-month-summary">
-      <div class="item"><div class="lbl">이 달 근무량</div><div class="val" id="cal-month-work">0</div></div>
+      <div class="item"><div class="lbl">이 달 근무일수</div><div class="val" id="cal-month-workdays">0일</div></div>
+      <div class="item"><div class="lbl">이 달 연장시간</div><div class="val" id="cal-month-ot">0H</div></div>
       <div class="item"><div class="lbl">이 달 예상 급여</div><div class="val" id="cal-month-pay">0원</div></div>
     </div>
 
@@ -479,6 +495,18 @@ function workTierClass(n) {
   if (n <= 1 + 0.001) return 'tier-normal';
   if (n <= 2 + 0.001) return 'tier-high';
   return 'tier-vhigh';
+}
+
+// 일급+시급(미국)의 연장시간 색상 구분 (1~2h/3~4h/5~6h/7~8h+, 기존 4색을 그대로 재사용)
+function hourTierClass(h) {
+  if (h <= 2 + 0.001) return 'tier-low';
+  if (h <= 4 + 0.001) return 'tier-normal';
+  if (h <= 6 + 0.001) return 'tier-high';
+  return 'tier-vhigh';
+}
+
+function fmtTrimNum(n) {
+  return (n || 0).toFixed(2).replace(/\.?0+$/, '') || '0';
 }
 
 // ---------- 계산 로직 ----------
@@ -908,7 +936,7 @@ function renderCalendar() {
 
   for (let i = 0; i < firstWeekday; i++) html += `<div class="cal-cell empty"></div>`;
 
-  let monthWorkTotal = 0, monthPayTotal = 0, monthPayTotalUsd = 0;
+  let monthWorkDays = 0, monthOtHours = 0, monthPayTotal = 0, monthPayTotalUsd = 0;
 
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = dateStr(y, m, d);
@@ -926,24 +954,47 @@ function renderCalendar() {
     let badgeLine = '';
     let payLine = '';
     if (logs.length > 0) {
-      const workAmount = logs.reduce((sum, log) => sum + Number(log.regularHours || 0) + Number(log.otHours || 0), 0);
+      const dailyLogs = logs.filter(l => logPayType(l) === 'daily');
+      const usdLogs = logs.filter(l => logPayType(l) === 'usd_daily');
+      const hourlyLogs = logs.filter(l => logPayType(l) === 'hourly');
+
       const total = logs.reduce((sum, log) => sum + computeLog(log).total, 0);
       const totalUsd = logs.reduce((sum, log) => sum + computeLog(log).totalUsd, 0);
-      monthWorkTotal += workAmount;
       monthPayTotal += total;
       monthPayTotalUsd += totalUsd;
+
+      monthWorkDays += dailyLogs.reduce((s, l) => s + Number(l.regularHours || 0) + Number(l.otHours || 0), 0);
+      monthWorkDays += usdLogs.reduce((s, l) => s + Number(l.regularHours || 0), 0);
+      monthOtHours += usdLogs.reduce((s, l) => s + Number(l.otHours || 0), 0);
+      if (hourlyLogs.some(l => Number(l.regularHours || 0) > 0)) monthWorkDays += 1;
+      monthOtHours += hourlyLogs.reduce((s, l) => s + Number(l.otHours || 0), 0);
+
       if (isOffOnlyDay(logs)) {
         badgeLine = `<div class="cal-work-badge tier-off">휴무</div>`;
       } else {
-        badgeLine = `<div class="cal-work-badge ${workTierClass(workAmount)}">${workAmount}</div>`;
-        payLine = `<div class="cal-pay">${fmtMoneyCompact(total, totalUsd)}</div>`;
+        const badges = [];
+
+        const dailyAmount = dailyLogs.reduce((s, l) => s + Number(l.regularHours || 0) + Number(l.otHours || 0), 0);
+        if (dailyAmount > 0) badges.push(`<div class="cal-work-badge ${workTierClass(dailyAmount)}">${dailyAmount}</div>`);
+
+        const usdDayAmount = usdLogs.reduce((s, l) => s + Number(l.regularHours || 0), 0);
+        const usdOtAmount = usdLogs.reduce((s, l) => s + Number(l.otHours || 0), 0);
+        if (usdDayAmount > 0) badges.push(`<div class="cal-work-badge ${workTierClass(usdDayAmount)}">${usdDayAmount}</div>`);
+        if (usdOtAmount > 0) badges.push(`<div class="cal-work-badge ${hourTierClass(usdOtAmount)}">${usdOtAmount}H</div>`);
+
+        const hourlyTotal = hourlyLogs.reduce((s, l) => s + Number(l.regularHours || 0) + Number(l.otHours || 0), 0);
+        if (hourlyTotal > 0) badges.push(`<div class="cal-work-badge tier-hourly">${hourlyTotal}H</div>`);
+
+        badgeLine = badges.join('');
+        payLine = `<div class="cal-pay">${fmtMoney(total, totalUsd)}</div>`;
       }
     }
     html += `<div class="${classes}" data-date="${ds}"><div class="cal-daynum${dowClass}">${d}</div>${badgeLine}${payLine}</div>`;
   }
 
   document.getElementById('cal-grid').innerHTML = html;
-  document.getElementById('cal-month-work').textContent = monthWorkTotal.toFixed(2).replace(/\.?0+$/, '') || '0';
+  document.getElementById('cal-month-workdays').textContent = fmtTrimNum(monthWorkDays) + '일';
+  document.getElementById('cal-month-ot').textContent = fmtTrimNum(monthOtHours) + 'H';
   document.getElementById('cal-month-pay').innerHTML = fmtMoney(monthPayTotal, monthPayTotalUsd);
 
   document.querySelectorAll('.cal-cell:not(.empty)').forEach(cell => {
