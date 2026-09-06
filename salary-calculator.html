@@ -471,11 +471,13 @@ function fmtUsd(n) {
   return '$' + Math.round(n || 0).toLocaleString('en-US');
 }
 
+// 그래프처럼 아주 좁은 공간에서는 $1,000 이상이면 "$4k"처럼 천 단위 정수로 줄여서 표기해요
 function fmtUsdChart(n) {
   if (amountsHidden) return '';
   const v = Math.round(n || 0);
   if (v === 0) return '';
-  return '$' + v.toLocaleString('en-US');
+  if (Math.abs(v) >= 1000) return '$' + Math.round(v / 1000) + 'k';
+  return '$' + v;
 }
 
 // 원화 금액과 달러 환산액을 함께 표기 (표·요약 등 일반 위치용)
