@@ -797,7 +797,8 @@ function renderDashboard() {
   const currentMonthIdx = (dashYear === now.getFullYear()) ? now.getMonth() : -1;
   const chart = document.getElementById('dash-chart');
   chart.innerHTML = monthlyTotals.map((v, i) => {
-    const heightPct = maxVal > 0 ? Math.max((v / maxVal) * 100, v > 0 ? 4 : 0) : 0;
+    // 막대 위에 원화·달러 두 줄 라벨이 항상 들어갈 공간이 남도록 막대는 최대 75%까지만 채워요
+    const heightPct = maxVal > 0 ? Math.max((v / maxVal) * 75, v > 0 ? 4 : 0) : 0;
     const isMax = v > 0 && v === maxVal;
     let cls = 'dash-bar';
     if (v > 0) cls += ' has-value';
