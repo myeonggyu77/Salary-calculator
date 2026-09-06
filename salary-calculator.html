@@ -130,10 +130,10 @@
   .cal-pay { font-size: 9px; line-height: 1.25; font-family: var(--mono); color: var(--ink-soft); margin-top: 3px; text-align: center; max-width: 100%; }
   .cal-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; font-size: 11px; color: var(--ink-soft); }
   .cal-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
-  .cal-month-summary { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 14px; }
-  .cal-month-summary .item { flex: 1 1 45%; min-width: 130px; background: var(--paper-raised); padding: 12px 14px; }
-  .cal-month-summary .item .lbl { font-size: 11px; color: var(--ink-faint); margin-bottom: 4px; }
-  .cal-month-summary .item .val { font-family: var(--mono); font-size: 14px; font-weight: 600; line-height: 1.5; }
+  .cal-month-summary { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 14px; }
+  .cal-month-summary .item { flex: 1; min-width: 0; background: var(--paper-raised); padding: 10px 6px; }
+  .cal-month-summary .item .lbl { font-size: 10px; color: var(--ink-faint); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cal-month-summary .item .val { font-family: var(--mono); font-size: 11px; font-weight: 600; line-height: 1.45; word-break: break-word; }
 
   .dash-chart-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 4px; padding: 16px; margin-bottom: 16px; }
   .dash-chart-card h3 { font-size: 13px; font-weight: 600; margin: 0 0 4px; }
@@ -509,16 +509,16 @@ function fmtMoneyCompact(krw, usd) {
   return usdPart ? `${fmtWonChart(krw)}<br>${usdPart}` : fmtWonChart(krw);
 }
 
-// 이 달 현황 카드처럼, 원화·달러를 같은 폰트로 두 줄에 나눠 표기해요.
+// 이 달 현황 카드처럼, 원화·달러를 같은 폰트로 한 줄에 나란히 표기해요.
 function fmtMoneyStackedPlain(krw, usd) {
   if (amountsHidden) return fmtWon(krw);
-  return `${fmtWon(krw)}<br>(${fmtUsd(usd)})`;
+  return `${fmtWon(krw)} (${fmtUsd(usd)})`;
 }
 
-// 이 달 근무시간/연장시간 카드용: 시간·원화·달러를 같은 폰트로 세 줄에 나눠 표기해요.
+// 이 달 근무시간/연장시간 카드용: 시간은 첫 줄, 원화(달러)는 둘째 줄에 같은 폰트로 표기해요.
 function fmtHoursPayStacked(hours, krw, usd) {
   if (amountsHidden) return `${fmtTrimNum(hours)}h`;
-  return `${fmtTrimNum(hours)}h<br>${fmtWon(krw)}<br>(${fmtUsd(usd)})`;
+  return `${fmtTrimNum(hours)}h<br>${fmtWon(krw)} (${fmtUsd(usd)})`;
 }
 
 function workTierClass(n) {
