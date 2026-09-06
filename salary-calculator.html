@@ -209,6 +209,9 @@
       <div class="sub" id="fx-rate-sub"></div>
     </div>
     <div class="btn-group">
+      <button class="ghost-btn" id="backup-export-btn">백업</button>
+      <button class="ghost-btn" id="backup-import-btn">복원</button>
+      <input type="file" id="backup-import-input" accept="application/json" style="display:none;" />
       <button class="ghost-btn" id="toggle-amounts-btn">금액 가리기</button>
       <button class="ghost-btn" id="logout-btn" style="display:none;">로그아웃</button>
     </div>
@@ -1447,6 +1450,50 @@ document.getElementById('cal-detail-tbody').addEventListener('click', (e) => {
     renderDashboard();
     renderCalendar();
     renderCalDetail();
+  }
+});
+
+// ---- 백업 / 복원 ----
+document.getElementById('backup-export-btn').addEventListener('click', () => {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    settings: state.settings,
+    workLogs: state.workLogs
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const todayStr = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `급여계산기_백업_${todayStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('백업 파일을 다운로드했어요.', 'success');
+});
+
+document.getElementById('backup-import-btn').addEventListener('click', () => {
+  document.getElementById('backup-import-input').click();
+});
+
+document.getElementById('backup-import-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data || typeof data !== 'object' || !Array.isArray(data.workLogs)) throw new Error('invalid format');
+    if (!confirm('백업 파일을 불러오면 현재 저장된 모든 근무 기록이 백업 파일 내용으로 덮어써져요. 계속할까요?')) return;
+    state.settings = Object.assign({ lastHourlyRate: 0, lastDailyRate: 0, lastOtMultiplier: 1.5, lastUsdDailyRate: 0, lastUsdOtRate: 0 }, data.settings || {});
+    state.workLogs = data.workLogs;
+    scheduleSave();
+    renderAll();
+    showToast('백업 파일을 정상적으로 불러왔어요.', 'success');
+  } catch (err) {
+    console.error(err);
+    showToast('백업 파일을 읽지 못했어요. 이 앱에서 내려받은 백업(JSON) 파일인지 확인해 주세요.', 'error');
   }
 });
 
