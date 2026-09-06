@@ -130,10 +130,10 @@
   .cal-pay { font-size: 9px; line-height: 1.25; font-family: var(--mono); color: var(--ink-soft); margin-top: 3px; text-align: center; max-width: 100%; }
   .cal-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; font-size: 11px; color: var(--ink-soft); }
   .cal-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
-  .cal-month-summary { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 14px; }
-  .cal-month-summary .item { flex: 1; background: var(--paper-raised); padding: 12px 14px; }
+  .cal-month-summary { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 14px; }
+  .cal-month-summary .item { flex: 1 1 45%; min-width: 130px; background: var(--paper-raised); padding: 12px 14px; }
   .cal-month-summary .item .lbl { font-size: 11px; color: var(--ink-faint); margin-bottom: 4px; }
-  .cal-month-summary .item .val { font-family: var(--mono); font-size: 16px; font-weight: 600; }
+  .cal-month-summary .item .val { font-family: var(--mono); font-size: 14px; font-weight: 600; line-height: 1.5; }
 
   .dash-chart-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 4px; padding: 16px; margin-bottom: 16px; }
   .dash-chart-card h3 { font-size: 13px; font-weight: 600; margin: 0 0 4px; }
@@ -291,7 +291,8 @@
 
     <div class="cal-month-summary">
       <div class="item"><div class="lbl">이 달 근무일수</div><div class="val" id="cal-month-workdays">0일</div></div>
-      <div class="item"><div class="lbl">이 달 연장시간</div><div class="val" id="cal-month-ot">0H</div></div>
+      <div class="item"><div class="lbl">이 달 근무시간</div><div class="val" id="cal-month-hours">0h</div></div>
+      <div class="item"><div class="lbl">이 달 연장시간</div><div class="val" id="cal-month-ot">0h</div></div>
       <div class="item"><div class="lbl">이 달 예상 급여</div><div class="val" id="cal-month-pay">0원</div></div>
     </div>
 
@@ -325,11 +326,11 @@
         <div class="form-note" id="cal-fx-hint"></div>
         <div class="form-grid">
           <div class="field"><div class="field-lbl">기준 금액 (USD)</div><input type="number" id="cal-usd-daily-usd" min="0" step="0.01"></div>
-          <div class="field"><div class="field-lbl">기준 금액 (원화)</div><input type="number" id="cal-usd-daily-krw" min="0" step="10"></div>
+          <div class="field"><div class="field-lbl">기준 금액 (원화)</div><input type="text" inputmode="decimal" id="cal-usd-daily-krw"></div>
         </div>
         <div class="form-grid">
           <div class="field"><div class="field-lbl">연장 시급 (USD)</div><input type="number" id="cal-usd-ot-usd" min="0" step="0.01"></div>
-          <div class="field"><div class="field-lbl">연장 시급 (원화)</div><input type="number" id="cal-usd-ot-krw" min="0" step="10"></div>
+          <div class="field"><div class="field-lbl">연장 시급 (원화)</div><input type="text" inputmode="decimal" id="cal-usd-ot-krw"></div>
         </div>
       </div>
       <div class="form-grid">
@@ -508,6 +509,18 @@ function fmtMoneyCompact(krw, usd) {
   return usdPart ? `${fmtWonChart(krw)}<br>${usdPart}` : fmtWonChart(krw);
 }
 
+// 이 달 현황 카드처럼, 원화·달러를 같은 폰트로 두 줄에 나눠 표기해요.
+function fmtMoneyStackedPlain(krw, usd) {
+  if (amountsHidden) return fmtWon(krw);
+  return `${fmtWon(krw)}<br>(${fmtUsd(usd)})`;
+}
+
+// 이 달 근무시간/연장시간 카드용: 시간·원화·달러를 같은 폰트로 세 줄에 나눠 표기해요.
+function fmtHoursPayStacked(hours, krw, usd) {
+  if (amountsHidden) return `${fmtTrimNum(hours)}h`;
+  return `${fmtTrimNum(hours)}h<br>${fmtWon(krw)}<br>(${fmtUsd(usd)})`;
+}
+
 function workTierClass(n) {
   if (n < 1 - 0.001) return 'tier-low';
   if (n <= 1 + 0.001) return 'tier-normal';
@@ -668,23 +681,41 @@ const FORM_SCOPES = {
   cal: { radioName: 'cal-pay-type', regularLbl: 'cal-regular-lbl', regularInput: 'cal-add-regular', dailyStatusInput: 'cal-daily-status', otLbl: 'cal-ot-lbl', otInput: 'cal-add-ot', otDailySelect: 'cal-add-ot-daily', rateLbl: 'cal-rate-lbl', rateInput: 'cal-add-rate', otMultField: 'cal-ot-multiplier-field', otMultInput: 'cal-add-ot-multiplier' }
 };
 
+function krwThousand(usd) {
+  return Math.round((Number(usd) || 0) * usdKrwRate / 1000) * 1000;
+}
+
 function linkCurrencyInputs(usdInput, krwInput) {
   usdInput.addEventListener('input', () => {
     if (usdInput.value === '') { krwInput.value = ''; return; }
     const usd = Number(usdInput.value);
-    // 원화는 천원 단위로 반올림해서 보여줘요
-    if (!isNaN(usd)) krwInput.value = Math.round(usd * usdKrwRate / 1000) * 1000;
+    // 원화는 천원 단위로 반올림해서, 천단위 콤마와 함께 보여줘요
+    if (!isNaN(usd)) krwInput.value = krwThousand(usd).toLocaleString('ko-KR');
   });
   krwInput.addEventListener('input', () => {
     if (krwInput.value === '') { usdInput.value = ''; return; }
-    const krw = Number(krwInput.value);
+    const krw = Number(krwInput.value.replace(/,/g, ''));
     if (!isNaN(krw)) usdInput.value = (krw / usdKrwRate).toFixed(2);
+  });
+  formatKrwDisplay(krwInput);
+}
+
+// 원화 입력칸은 편집할 때는 순수 숫자로, 벗어나면 천단위 콤마를 붙여서 보여줘요
+function formatKrwDisplay(input) {
+  input.addEventListener('focus', () => {
+    if (input.value === '') return;
+    input.value = input.value.replace(/,/g, '');
+  });
+  input.addEventListener('blur', () => {
+    if (input.value === '') return;
+    const num = Number(input.value.replace(/,/g, ''));
+    if (!isNaN(num)) input.value = Math.round(num).toLocaleString('ko-KR');
   });
 }
 
 function setLinkedUsdValue(usdInput, krwInput, usd) {
   usdInput.value = usd;
-  krwInput.value = Math.round((Number(usd) || 0) * usdKrwRate / 1000) * 1000;
+  krwInput.value = krwThousand(usd).toLocaleString('ko-KR');
 }
 
 // 기준 금액을 입력하면 연장 시급을 자동으로 1.5배 계산해서 채워줘요
@@ -974,7 +1005,9 @@ function renderCalendar() {
 
   for (let i = 0; i < firstWeekday; i++) html += `<div class="cal-cell empty"></div>`;
 
-  let monthWorkDays = 0, monthOtHours = 0, monthPayTotal = 0, monthPayTotalUsd = 0;
+  let monthWorkDays = 0, monthWorkHours = 0, monthOtHours = 0;
+  let monthRegularPay = 0, monthRegularPayUsd = 0, monthOtPay = 0, monthOtPayUsd = 0;
+  let monthPayTotal = 0, monthPayTotalUsd = 0;
 
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = dateStr(y, m, d);
@@ -1001,13 +1034,20 @@ function renderCalendar() {
       monthPayTotal += total;
       monthPayTotalUsd += totalUsd;
 
-      monthWorkDays += dailyLogs.reduce((s, l) => s + Number(l.regularHours || 0) + Number(l.otHours || 0), 0);
-      if (usdLogs.some(l => Number(l.regularHours || 0) > 0)) monthWorkDays += 1;
-      monthOtHours += usdLogs.reduce((s, l) => s + Number(l.otHours || 0), 0);
-      if (hourlyLogs.some(l => Number(l.regularHours || 0) > 0)) monthWorkDays += 1;
-      monthOtHours += hourlyLogs.reduce((s, l) => s + Number(l.otHours || 0), 0);
+      const allOff = isOffOnlyDay(logs);
+      if (!allOff) monthWorkDays += 1;
 
-      if (isOffOnlyDay(logs)) {
+      hourlyLogs.concat(usdLogs).forEach(log => {
+        const c = computeLog(log);
+        monthWorkHours += Number(log.regularHours || 0);
+        monthRegularPay += c.regularPay;
+        monthRegularPayUsd += c.regularPayUsd;
+        monthOtHours += Number(log.otHours || 0);
+        monthOtPay += c.otPay;
+        monthOtPayUsd += c.otPayUsd;
+      });
+
+      if (allOff) {
         badgeLine = `<div class="cal-badge-row"><div class="cal-work-badge tier-off">휴무</div></div>`;
       } else {
         const badges = [];
@@ -1032,8 +1072,9 @@ function renderCalendar() {
 
   document.getElementById('cal-grid').innerHTML = html;
   document.getElementById('cal-month-workdays').textContent = fmtTrimNum(monthWorkDays) + '일';
-  document.getElementById('cal-month-ot').textContent = fmtTrimNum(monthOtHours) + 'H';
-  document.getElementById('cal-month-pay').innerHTML = fmtMoney(monthPayTotal, monthPayTotalUsd);
+  document.getElementById('cal-month-hours').innerHTML = fmtHoursPayStacked(monthWorkHours, monthRegularPay, monthRegularPayUsd);
+  document.getElementById('cal-month-ot').innerHTML = fmtHoursPayStacked(monthOtHours, monthOtPay, monthOtPayUsd);
+  document.getElementById('cal-month-pay').innerHTML = fmtMoneyStackedPlain(monthPayTotal, monthPayTotalUsd);
 
   document.querySelectorAll('.cal-cell:not(.empty)').forEach(cell => {
     cell.addEventListener('click', () => {
