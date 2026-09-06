@@ -39,7 +39,7 @@
 
   /* PC(넓은 화면)에서는 레이아웃을 1.5배 키워서 보여줘요. 휴대폰(좁은 화면)은 그대로예요. */
   @media (min-width: 1024px) {
-    .app { zoom: 1.5; }
+    .app { zoom: 1.2; }
   }
 
   .masthead { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; row-gap: 10px; margin-bottom: 22px; padding-bottom: 16px; border-bottom: 1px solid var(--ink); }
@@ -119,14 +119,14 @@
   .cal-daynum.sat { color: #2563a8; }
   .cal-daynum.holiday { color: var(--down); font-weight: 700; }
   .cal-cell.holiday { background: var(--down-soft); border-color: #f0c9c9; }
-  .cal-work-badge { font-size: 12px; font-weight: 700; font-family: var(--mono); color: #fff; border-radius: 4px; padding: 2px 8px; white-space: nowrap; }
+  .cal-badge-row { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px; }
+  .cal-work-badge { font-size: 10px; font-weight: 700; font-family: var(--mono); color: #fff; border-radius: 3px; padding: 1px 4px; white-space: nowrap; }
   .cal-work-badge.tier-low { background: #64748b; }
   .cal-work-badge.tier-normal { background: #d97a1f; }
   .cal-work-badge.tier-high { background: #dc2626; }
   .cal-work-badge.tier-vhigh { background: #7e22ce; }
-  .cal-work-badge.tier-off { background: var(--ink-faint); font-size: 11px; }
+  .cal-work-badge.tier-off { background: var(--ink-faint); font-size: 10px; }
   .cal-work-badge.tier-hourly { background: #2563a8; }
-  .cal-work-badge + .cal-work-badge { margin-top: 2px; }
   .cal-pay { font-size: 9px; line-height: 1.25; font-family: var(--mono); color: var(--ink-soft); margin-top: 3px; text-align: center; max-width: 100%; }
   .cal-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; font-size: 11px; color: var(--ink-soft); }
   .cal-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
@@ -465,14 +465,15 @@ function fmtWonChart(n) {
   return Math.round(v / 10000) + '만';
 }
 
+// 달러 표기는 소수점을 절상(올림)해요 (예: $12.341 -> $12.35)
 function fmtUsd(n) {
   if (amountsHidden) return '$＊＊';
-  return '$' + (Math.round((n || 0) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return '$' + (Math.ceil((n || 0) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtUsdChart(n) {
   if (amountsHidden) return '';
-  const v = Math.round(n || 0);
+  const v = Math.ceil(n || 0);
   if (v === 0) return '';
   return '$' + v.toLocaleString('en-US');
 }
@@ -970,7 +971,7 @@ function renderCalendar() {
       monthOtHours += hourlyLogs.reduce((s, l) => s + Number(l.otHours || 0), 0);
 
       if (isOffOnlyDay(logs)) {
-        badgeLine = `<div class="cal-work-badge tier-off">휴무</div>`;
+        badgeLine = `<div class="cal-badge-row"><div class="cal-work-badge tier-off">휴무</div></div>`;
       } else {
         const badges = [];
 
@@ -985,7 +986,7 @@ function renderCalendar() {
         const hourlyTotal = hourlyLogs.reduce((s, l) => s + Number(l.regularHours || 0) + Number(l.otHours || 0), 0);
         if (hourlyTotal > 0) badges.push(`<div class="cal-work-badge tier-hourly">${hourlyTotal}H</div>`);
 
-        badgeLine = badges.join('');
+        badgeLine = `<div class="cal-badge-row">${badges.join('')}</div>`;
         payLine = `<div class="cal-pay">${fmtMoney(total, totalUsd)}</div>`;
       }
     }
