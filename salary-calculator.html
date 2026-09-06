@@ -1353,6 +1353,8 @@ function resetCalAddForm() {
   document.getElementById('cal-usd-daily-krw').value = '';
   document.getElementById('cal-usd-ot-usd').value = '';
   document.getElementById('cal-usd-ot-krw').value = '';
+  // 방금 등록한 금액을 기억해서, 다음 날짜 등록 시에도 자동으로 채워줘요
+  updateEntryForm('cal');
 }
 
 document.getElementById('cal-add-btn').addEventListener('click', () => {
