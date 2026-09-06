@@ -1197,7 +1197,7 @@ async function init() {
   if (usingSupabase) {
     try {
       supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: { persistSession: false, autoRefreshToken: true }
+        auth: { persistSession: true, autoRefreshToken: true }
       });
     } catch (e) {
       console.error(e);
