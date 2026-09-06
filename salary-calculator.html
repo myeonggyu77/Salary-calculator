@@ -465,15 +465,15 @@ function fmtWonChart(n) {
   return Math.round(v / 10000) + '만';
 }
 
-// 달러 표기는 소수점을 절상(올림)해요 (예: $12.341 -> $12.35)
+// 달러 표기는 소수점 없이 반올림한 정수로 보여줘요 (예: $12.49 -> $12, $12.5 -> $13)
 function fmtUsd(n) {
   if (amountsHidden) return '$＊＊';
-  return '$' + (Math.ceil((n || 0) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return '$' + Math.round(n || 0).toLocaleString('en-US');
 }
 
 function fmtUsdChart(n) {
   if (amountsHidden) return '';
-  const v = Math.ceil(n || 0);
+  const v = Math.round(n || 0);
   if (v === 0) return '';
   return '$' + v.toLocaleString('en-US');
 }
