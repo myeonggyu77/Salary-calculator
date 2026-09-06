@@ -141,7 +141,7 @@
   .dash-chart-legend .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: 1px; background: linear-gradient(180deg, #f5c15c, #d99a1f); }
   .dash-chart { display: flex; align-items: flex-end; gap: 3px; height: 170px; }
   .dash-bar-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
-  .dash-bar-val { font-size: 9px; font-family: var(--mono); color: var(--ink-soft); margin-bottom: 3px; white-space: nowrap; overflow: hidden; max-width: 100%; text-overflow: clip; }
+  .dash-bar-val { font-size: 9px; line-height: 1.3; font-family: var(--mono); color: var(--ink-soft); margin-bottom: 3px; white-space: nowrap; overflow: hidden; max-width: 100%; text-overflow: clip; }
   .dash-bar { width: 100%; max-width: 26px; background: var(--line-soft); border-radius: 4px 4px 1px 1px; min-height: 3px; }
   .dash-bar.has-value { background: linear-gradient(180deg, #1a8f6e, #0f6e56); box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset; }
   .dash-bar.is-max { background: linear-gradient(180deg, #f5c15c, #d99a1f); }
@@ -484,11 +484,12 @@ function fmtMoney(krw, usd) {
   return `${fmtWon(krw)} <span class="money-usd">(${fmtUsd(usd)})</span>`;
 }
 
-// 달력 칸처럼 좁은 공간에서 쓰는 짧은 이중통화 표기
+// 급여현황 그래프 막대 위에 쓰는 표기: 원화는 만원 단위(소수점 없음)로,
+// 원화·달러를 줄바꿈으로 두 줄에 나눠 표기해요.
 function fmtMoneyCompact(krw, usd) {
-  if (amountsHidden) return fmtWonCompact(krw);
+  if (amountsHidden) return fmtWonChart(krw);
   const usdPart = fmtUsdChart(usd);
-  return usdPart ? `${fmtWonCompact(krw)} · ${usdPart}` : fmtWonCompact(krw);
+  return usdPart ? `${fmtWonChart(krw)}<br>${usdPart}` : fmtWonChart(krw);
 }
 
 function workTierClass(n) {
