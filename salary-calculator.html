@@ -281,7 +281,7 @@
       <span><span class="dot" style="background:var(--down-soft); box-shadow: inset 0 0 0 1px var(--down);"></span>공휴일/일요일</span>
     </div>
     <div class="cal-legend" style="margin-top:2px;">
-      <span style="color:var(--ink-faint);">연장시간(일급+시급 미국):</span>
+      <span style="color:var(--ink-faint);">시급+연장시급:</span>
       <span><span class="dot" style="background:#64748b;"></span>1~2H</span>
       <span><span class="dot" style="background:#d97a1f;"></span>3~4H</span>
       <span><span class="dot" style="background:#dc2626;"></span>5~6H</span>
@@ -314,7 +314,7 @@
         <div class="radio-row" id="cal-pay-type-row">
           <label><input type="radio" name="cal-pay-type" value="hourly" checked> 시급제</label>
           <label><input type="radio" name="cal-pay-type" value="daily"> 일급제</label>
-          <label><input type="radio" name="cal-pay-type" value="usd_daily"> 일급+시급(미국)</label>
+          <label><input type="radio" name="cal-pay-type" value="usd_daily"> 시급+연장시급</label>
         </div>
       </div>
       <div class="form-grid">
@@ -324,8 +324,8 @@
       <div id="cal-usd-fields" style="display:none;">
         <div class="form-note" id="cal-fx-hint"></div>
         <div class="form-grid">
-          <div class="field"><div class="field-lbl">하루 일당 (USD)</div><input type="number" id="cal-usd-daily-usd" min="0" step="0.01"></div>
-          <div class="field"><div class="field-lbl">하루 일당 (원화)</div><input type="number" id="cal-usd-daily-krw" min="0" step="10"></div>
+          <div class="field"><div class="field-lbl">기준 금액 (USD)</div><input type="number" id="cal-usd-daily-usd" min="0" step="0.01"></div>
+          <div class="field"><div class="field-lbl">기준 금액 (원화)</div><input type="number" id="cal-usd-daily-krw" min="0" step="10"></div>
         </div>
         <div class="form-grid">
           <div class="field"><div class="field-lbl">연장 시급 (USD)</div><input type="number" id="cal-usd-ot-usd" min="0" step="0.01"></div>
@@ -338,6 +338,17 @@
           <select id="cal-daily-status" style="display:none;">
             <option value="1">출근</option>
             <option value="0.5">반일</option>
+            <option value="off">휴무</option>
+          </select>
+          <select id="cal-usd-work-hours" style="display:none;">
+            <option value="1">1시간</option>
+            <option value="2">2시간</option>
+            <option value="3">3시간</option>
+            <option value="4">4시간</option>
+            <option value="5">5시간</option>
+            <option value="6">6시간</option>
+            <option value="7">7시간</option>
+            <option value="8">8시간</option>
             <option value="off">휴무</option>
           </select>
         </div>
@@ -504,7 +515,7 @@ function workTierClass(n) {
   return 'tier-vhigh';
 }
 
-// 일급+시급(미국)의 연장시간 색상 구분 (1~2h/3~4h/5~6h/7~8h+, 기존 4색을 그대로 재사용)
+// 시급+연장시급의 근무시간/연장시간 색상 구분 (1~2h/3~4h/5~6h/7~8h+, 기존 4색을 그대로 재사용)
 function hourTierClass(h) {
   if (h <= 2 + 0.001) return 'tier-low';
   if (h <= 4 + 0.001) return 'tier-normal';
@@ -562,14 +573,14 @@ function computeLog(log) {
 function payBadge(log) {
   const payType = logPayType(log);
   if (payType === 'daily') return `<span class="pay-badge daily">일급제</span>`;
-  if (payType === 'usd_daily') return `<span class="pay-badge usd">일급+시급(미국)</span>`;
+  if (payType === 'usd_daily') return `<span class="pay-badge usd">시급+연장시급</span>`;
   return `<span class="pay-badge">시급제</span>`;
 }
 
 function fmtBaseRate(log) {
   const payType = logPayType(log);
   if (payType === 'usd_daily') {
-    return `${fmtUsd(log.dailyRateUsd)}/일<br><span class="money-usd">연장 ${fmtUsd(log.otRateUsd)}/h</span>`;
+    return `${fmtUsd(log.dailyRateUsd)}/h<br><span class="money-usd">연장 ${fmtUsd(log.otRateUsd)}/h</span>`;
   }
   return fmtWon(log.rate);
 }
@@ -578,7 +589,7 @@ function fmtRegular(log) {
   const payType = logPayType(log);
   if (payType !== 'hourly' && log.dayStatus === 'off') return '휴무';
   const n = Number(log.regularHours || 0);
-  return payType !== 'hourly' ? `${n}일` : `${n}h`;
+  return payType === 'daily' ? `${n}일` : `${n}h`;
 }
 
 function isOffOnlyDay(logs) {
@@ -661,7 +672,8 @@ function linkCurrencyInputs(usdInput, krwInput) {
   usdInput.addEventListener('input', () => {
     if (usdInput.value === '') { krwInput.value = ''; return; }
     const usd = Number(usdInput.value);
-    if (!isNaN(usd)) krwInput.value = Math.round(usd * usdKrwRate);
+    // 원화는 천원 단위로 반올림해서 보여줘요
+    if (!isNaN(usd)) krwInput.value = Math.round(usd * usdKrwRate / 1000) * 1000;
   });
   krwInput.addEventListener('input', () => {
     if (krwInput.value === '') { usdInput.value = ''; return; }
@@ -672,7 +684,21 @@ function linkCurrencyInputs(usdInput, krwInput) {
 
 function setLinkedUsdValue(usdInput, krwInput, usd) {
   usdInput.value = usd;
-  krwInput.value = Math.round((Number(usd) || 0) * usdKrwRate);
+  krwInput.value = Math.round((Number(usd) || 0) * usdKrwRate / 1000) * 1000;
+}
+
+// 기준 금액을 입력하면 연장 시급을 자동으로 1.5배 계산해서 채워줘요
+function syncOtFromBaseRate() {
+  const baseUsdInput = document.getElementById('cal-usd-daily-usd');
+  const otUsdInput = document.getElementById('cal-usd-ot-usd');
+  const otKrwInput = document.getElementById('cal-usd-ot-krw');
+  if (baseUsdInput.value === '') {
+    otUsdInput.value = '';
+    otKrwInput.value = '';
+    return;
+  }
+  const baseUsd = Number(baseUsdInput.value) || 0;
+  setLinkedUsdValue(otUsdInput, otKrwInput, Math.round(baseUsd * 1.5 * 100) / 100);
 }
 
 function updateEntryForm(scopeKey) {
@@ -682,13 +708,15 @@ function updateEntryForm(scopeKey) {
   const isUsdDaily = payType === 'usd_daily';
   const isDayBased = isDaily || isUsdDaily;
 
-  document.getElementById(cfg.regularLbl).textContent = isDayBased ? '근무 구분' : '정규 근무시간';
+  document.getElementById(cfg.regularLbl).textContent = isDaily ? '근무 구분' : (isUsdDaily ? '근무 시간' : '정규 근무시간');
   const regularInput = document.getElementById(cfg.regularInput);
   const dailyStatusInput = document.getElementById(cfg.dailyStatusInput);
+  const usdWorkHoursInput = document.getElementById('cal-usd-work-hours');
   regularInput.style.display = isDayBased ? 'none' : '';
-  dailyStatusInput.style.display = isDayBased ? '' : 'none';
+  dailyStatusInput.style.display = isDaily ? '' : 'none';
+  usdWorkHoursInput.style.display = isUsdDaily ? '' : 'none';
 
-  document.getElementById(cfg.otLbl).textContent = isDaily ? '추가(연장) 근무일수' : '추가(연장) 근무시간';
+  document.getElementById(cfg.otLbl).textContent = isDaily ? '추가(연장) 근무일수' : (isUsdDaily ? '연장시간' : '추가(연장) 근무시간');
   document.getElementById(cfg.otInput).style.display = isDaily ? 'none' : '';
   document.getElementById(cfg.otDailySelect).style.display = isDaily ? '' : 'none';
   document.getElementById(cfg.rateLbl).textContent = isDaily ? '일급 (원)' : '시급 (원)';
@@ -974,7 +1002,7 @@ function renderCalendar() {
       monthPayTotalUsd += totalUsd;
 
       monthWorkDays += dailyLogs.reduce((s, l) => s + Number(l.regularHours || 0) + Number(l.otHours || 0), 0);
-      monthWorkDays += usdLogs.reduce((s, l) => s + Number(l.regularHours || 0), 0);
+      if (usdLogs.some(l => Number(l.regularHours || 0) > 0)) monthWorkDays += 1;
       monthOtHours += usdLogs.reduce((s, l) => s + Number(l.otHours || 0), 0);
       if (hourlyLogs.some(l => Number(l.regularHours || 0) > 0)) monthWorkDays += 1;
       monthOtHours += hourlyLogs.reduce((s, l) => s + Number(l.otHours || 0), 0);
@@ -989,7 +1017,7 @@ function renderCalendar() {
 
         const usdDayAmount = usdLogs.reduce((s, l) => s + Number(l.regularHours || 0), 0);
         const usdOtAmount = usdLogs.reduce((s, l) => s + Number(l.otHours || 0), 0);
-        if (usdDayAmount > 0) badges.push(`<div class="cal-work-badge ${workTierClass(usdDayAmount)}">${usdDayAmount}</div>`);
+        if (usdDayAmount > 0) badges.push(`<div class="cal-work-badge ${hourTierClass(usdDayAmount)}">${usdDayAmount}H</div>`);
         if (usdOtAmount > 0) badges.push(`<div class="cal-work-badge ${hourTierClass(usdOtAmount)}">${usdOtAmount}H</div>`);
 
         const hourlyTotal = hourlyLogs.reduce((s, l) => s + Number(l.regularHours || 0) + Number(l.otHours || 0), 0);
@@ -1100,7 +1128,7 @@ function startEditLog(log) {
   if (log.payType === 'usd_daily') {
     setLinkedUsdValue(document.getElementById('cal-usd-daily-usd'), document.getElementById('cal-usd-daily-krw'), log.dailyRateUsd || 0);
     setLinkedUsdValue(document.getElementById('cal-usd-ot-usd'), document.getElementById('cal-usd-ot-krw'), log.otRateUsd || 0);
-    document.getElementById('cal-daily-status').value = dayStatusToSelectValue(log.dayStatus);
+    document.getElementById('cal-usd-work-hours').value = log.dayStatus === 'off' ? 'off' : String(log.regularHours || 1);
     document.getElementById('cal-add-ot').value = log.otHours || 0;
   } else if (log.payType === 'daily') {
     document.getElementById('cal-add-rate').value = log.rate || 0;
@@ -1143,13 +1171,20 @@ document.getElementById('cal-pay-type-row').addEventListener('change', () => upd
 
 linkCurrencyInputs(document.getElementById('cal-usd-daily-usd'), document.getElementById('cal-usd-daily-krw'));
 linkCurrencyInputs(document.getElementById('cal-usd-ot-usd'), document.getElementById('cal-usd-ot-krw'));
+document.getElementById('cal-usd-daily-usd').addEventListener('input', syncOtFromBaseRate);
+document.getElementById('cal-usd-daily-krw').addEventListener('input', syncOtFromBaseRate);
 
 function readRegularEntry(scopeKey) {
   const cfg = FORM_SCOPES[scopeKey];
   const payType = document.querySelector(`input[name="${cfg.radioName}"]:checked`).value;
-  if (payType === 'daily' || payType === 'usd_daily') {
+  if (payType === 'daily') {
     const v = document.getElementById(cfg.dailyStatusInput).value;
     const dayStatus = v === 'off' ? 'off' : (v === '1' ? 'work' : 'half');
+    return { payType, regularHours: v === 'off' ? 0 : Number(v), dayStatus, hasRegular: true };
+  }
+  if (payType === 'usd_daily') {
+    const v = document.getElementById('cal-usd-work-hours').value;
+    const dayStatus = v === 'off' ? 'off' : 'work';
     return { payType, regularHours: v === 'off' ? 0 : Number(v), dayStatus, hasRegular: true };
   }
   const raw = document.getElementById(cfg.regularInput).value;
@@ -1163,7 +1198,7 @@ function readOtEntry(scopeKey) {
     const v = document.getElementById(cfg.otDailySelect).value;
     return { otHours: Number(v) || 0, raw: v };
   }
-  // 시급제 & 일급+시급(미국) 둘 다 실제 연장근무 시간을 그대로 입력받아요
+  // 시급제 & 시급+연장시급 둘 다 실제 연장근무 시간을 그대로 입력받아요
   const raw = document.getElementById(cfg.otInput).value;
   return { otHours: Number(raw) || 0, raw };
 }
@@ -1353,6 +1388,7 @@ document.getElementById('cal-multiselect-delete').addEventListener('click', () =
 function resetCalAddForm() {
   document.getElementById('cal-add-regular').value = '';
   document.getElementById('cal-daily-status').value = '1';
+  document.getElementById('cal-usd-work-hours').value = '1';
   document.getElementById('cal-add-ot').value = '';
   document.getElementById('cal-add-ot-daily').value = '0';
   document.getElementById('cal-add-memo').value = '';
