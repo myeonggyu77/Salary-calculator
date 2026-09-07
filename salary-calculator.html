@@ -39,7 +39,7 @@
 
   /* PC(넓은 화면)에서는 레이아웃을 1.5배 키워서 보여줘요. 휴대폰(좁은 화면)은 그대로예요. */
   @media (min-width: 1024px) {
-    .app { zoom: 1.2; }
+    .app { zoom: 1.68; }
   }
 
   .masthead { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; row-gap: 10px; margin-bottom: 22px; padding-bottom: 16px; border-bottom: 1px solid var(--ink); }
@@ -96,7 +96,7 @@
   tbody tr:hover { background: var(--accent-tint); }
   .empty-row td { text-align: center; color: var(--ink-faint); padding: 24px; }
   .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; }
-  .table-wrap table { min-width: 560px; }
+  .table-wrap table { min-width: 900px; }
 
   .cal-header { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 14px; }
   .cal-header .cal-title { font-size: 15px; font-weight: 600; min-width: 110px; text-align: center; }
@@ -219,10 +219,18 @@
 
   <div class="banner" id="local-banner" style="display:none;">이 브라우저에만 저장되는 로컬 모드예요. 다른 기기와는 데이터가 공유되지 않아요.</div>
 
-  <div class="kpi-row" id="kpi-row">
-    <div class="kpi"><div class="lbl" id="kpi-lbl-regular">정규급여</div><div class="val" id="kpi-regular">0원</div></div>
-    <div class="kpi"><div class="lbl" id="kpi-lbl-ot">연장근무수당</div><div class="val" id="kpi-ot">0원</div></div>
-    <div class="kpi"><div class="lbl" id="kpi-lbl-total">합계</div><div class="val" id="kpi-total">0원</div></div>
+  <div class="form-card" id="week-lookup-card" style="display:none;">
+    <h3>주간급여 조회</h3>
+    <div class="form-grid">
+      <div class="field"><div class="field-lbl">급여조회일</div><input type="date" id="week-lookup-date"></div>
+    </div>
+    <div class="hint" id="week-lookup-range" style="margin-bottom:10px;"></div>
+    <div class="kpi-row" style="margin-bottom:0;">
+      <div class="kpi"><div class="lbl">정규급여계</div><div class="val" id="week-lookup-regular">0원</div></div>
+      <div class="kpi"><div class="lbl">초과수당계</div><div class="val" id="week-lookup-ot">0원</div></div>
+      <div class="kpi"><div class="lbl">복리후생계</div><div class="val" id="week-lookup-benefit">0원</div></div>
+      <div class="kpi"><div class="lbl">합계</div><div class="val" id="week-lookup-total">0원</div></div>
+    </div>
   </div>
 
   <div class="tabs">
@@ -245,7 +253,7 @@
       <table>
         <thead><tr>
           <th style="width:30px;"><input type="checkbox" id="logs-select-all"></th>
-          <th>근무일</th><th>구분</th><th class="num">기준금액</th><th class="num">정규</th><th class="num">연장시간</th><th class="num">정규급여</th><th class="num">연장수당</th><th class="num">합계</th><th>메모</th><th style="width:40px;"></th>
+          <th>주차</th><th>근무일</th><th>구분</th><th class="num">기준금액</th><th class="num">정규</th><th class="num">초과시간</th><th class="num">복리후생시간</th><th class="num">정규급여</th><th class="num">초과수당</th><th class="num">복리후생</th><th class="num">합계</th><th style="width:70px;"></th>
         </tr></thead>
         <tbody id="logs-tbody"></tbody>
         <tfoot id="logs-tfoot"></tfoot>
@@ -281,7 +289,7 @@
       <span><span class="dot" style="background:var(--down-soft); box-shadow: inset 0 0 0 1px var(--down);"></span>공휴일/일요일</span>
     </div>
     <div class="cal-legend" style="margin-top:2px;">
-      <span style="color:var(--ink-faint);">시급+연장시급:</span>
+      <span style="color:var(--ink-faint);">미국급여:</span>
       <span><span class="dot" style="background:#64748b;"></span>1~2H</span>
       <span><span class="dot" style="background:#d97a1f;"></span>3~4H</span>
       <span><span class="dot" style="background:#dc2626;"></span>5~6H</span>
@@ -315,7 +323,7 @@
         <div class="radio-row" id="cal-pay-type-row">
           <label><input type="radio" name="cal-pay-type" value="hourly" checked> 시급제</label>
           <label><input type="radio" name="cal-pay-type" value="daily"> 일급제</label>
-          <label><input type="radio" name="cal-pay-type" value="usd_daily"> 시급+연장시급</label>
+          <label><input type="radio" name="cal-pay-type" value="usd_daily"> 미국급여</label>
         </div>
       </div>
       <div class="form-grid">
@@ -329,9 +337,10 @@
           <div class="field"><div class="field-lbl">기준 금액 (원화)</div><input type="text" inputmode="decimal" id="cal-usd-daily-krw"></div>
         </div>
         <div class="form-grid">
-          <div class="field"><div class="field-lbl">연장 시급 (USD)</div><input type="number" id="cal-usd-ot-usd" min="0" step="0.01"></div>
-          <div class="field"><div class="field-lbl">연장 시급 (원화)</div><input type="text" inputmode="decimal" id="cal-usd-ot-krw"></div>
+          <div class="field"><div class="field-lbl">복리후생기준액 (USD)</div><input type="number" id="cal-usd-benefit-usd" min="0" step="0.01"></div>
+          <div class="field"><div class="field-lbl">복리후생기준액 (원화)</div><input type="text" inputmode="decimal" id="cal-usd-benefit-krw"></div>
         </div>
+        <div class="form-note">초과근무수당(기준금액×1.5)과 복리후생(복리후생기준액×근무시간+초과근무시간)은 자동으로 계산돼요.</div>
       </div>
       <div class="form-grid">
         <div class="field"><div class="field-lbl" id="cal-regular-lbl">정규 근무시간</div>
@@ -413,7 +422,7 @@ let currentUser = null;
 let saveTimer = null;
 
 let state = {
-  settings: { lastHourlyRate: 0, lastDailyRate: 0, lastOtMultiplier: 1.5, lastUsdDailyRate: 0, lastUsdOtRate: 0 },
+  settings: { lastHourlyRate: 0, lastDailyRate: 0, lastOtMultiplier: 1.5, lastUsdDailyRate: 0, lastUsdBenefitRate: 0 },
   workLogs: []
 };
 
@@ -528,7 +537,7 @@ function workTierClass(n) {
   return 'tier-vhigh';
 }
 
-// 시급+연장시급의 근무시간/연장시간 색상 구분 (1~2h/3~4h/5~6h/7~8h+, 기존 4색을 그대로 재사용)
+// 미국급여의 근무시간/초과근무시간 색상 구분 (1~2h/3~4h/5~6h/7~8h+, 기존 4색을 그대로 재사용)
 function hourTierClass(h) {
   if (h <= 2 + 0.001) return 'tier-low';
   if (h <= 4 + 0.001) return 'tier-normal';
@@ -547,19 +556,28 @@ function logPayType(log) {
   return 'hourly';
 }
 
+// 미국급여의 초과근무 할증률(1.5배)은 별도 입력 없이 고정으로 적용해요
+const US_OT_MULTIPLIER = 1.5;
+
 function computeLog(log) {
   const payType = logPayType(log);
 
   if (payType === 'usd_daily') {
+    const baseRateUsd = Number(log.dailyRateUsd) || 0;
+    const benefitRateUsd = Number(log.benefitRateUsd) || 0;
     const regularHours = Number(log.regularHours) || 0;
     const otHours = Number(log.otHours) || 0;
-    const regularPayUsd = (Number(log.dailyRateUsd) || 0) * regularHours;
-    const otPayUsd = (Number(log.otRateUsd) || 0) * otHours;
-    const totalUsd = regularPayUsd + otPayUsd;
+    const benefitHours = regularHours + otHours;
+
+    const regularPayUsd = baseRateUsd * regularHours;
+    const otPayUsd = baseRateUsd * US_OT_MULTIPLIER * otHours;
+    const benefitPayUsd = benefitRateUsd * benefitHours;
+    const totalUsd = regularPayUsd + otPayUsd + benefitPayUsd;
     return {
-      regularPayUsd, otPayUsd, totalUsd,
+      regularPayUsd, otPayUsd, benefitPayUsd, totalUsd,
       regularPay: regularPayUsd * usdKrwRate,
       otPay: otPayUsd * usdKrwRate,
+      benefitPay: benefitPayUsd * usdKrwRate,
       total: totalUsd * usdKrwRate
     };
   }
@@ -576,9 +594,10 @@ function computeLog(log) {
   }
   const total = regularPay + otPay;
   return {
-    regularPay, otPay, total,
+    regularPay, otPay, benefitPay: 0, total,
     regularPayUsd: regularPay / usdKrwRate,
     otPayUsd: otPay / usdKrwRate,
+    benefitPayUsd: 0,
     totalUsd: total / usdKrwRate
   };
 }
@@ -586,16 +605,37 @@ function computeLog(log) {
 function payBadge(log) {
   const payType = logPayType(log);
   if (payType === 'daily') return `<span class="pay-badge daily">일급제</span>`;
-  if (payType === 'usd_daily') return `<span class="pay-badge usd">시급+연장시급</span>`;
+  if (payType === 'usd_daily') return `<span class="pay-badge usd">미국급여</span>`;
   return `<span class="pay-badge">시급제</span>`;
 }
 
 function fmtBaseRate(log) {
   const payType = logPayType(log);
   if (payType === 'usd_daily') {
-    return `${fmtUsd(log.dailyRateUsd)}/h<br><span class="money-usd">연장 ${fmtUsd(log.otRateUsd)}/h</span>`;
+    return `${fmtUsd(log.dailyRateUsd)}/h<br><span class="money-usd">복리후생 ${fmtUsd(log.benefitRateUsd)}/h</span>`;
   }
   return fmtWon(log.rate);
+}
+
+// 급여정산 표의 3줄 기준금액 칸: 기준금액 / 초과근무기준액 / 복리후생기준액
+function fmtBaseRate3Line(log) {
+  const payType = logPayType(log);
+  if (payType === 'usd_daily') {
+    const base = Number(log.dailyRateUsd) || 0;
+    return `${fmtUsd(base)}<br>${fmtUsd(base * US_OT_MULTIPLIER)}<br>${fmtUsd(log.benefitRateUsd || 0)}`;
+  }
+  if (payType === 'daily') {
+    return `${fmtWon(log.rate)}<br>${fmtWon(log.rate)}<br>-`;
+  }
+  const rate = Number(log.rate) || 0;
+  const mult = Number(log.otMultiplier) || 1;
+  return `${fmtWon(rate)}<br>${fmtWon(rate * mult)}<br>-`;
+}
+
+function fmtBenefitHours(log) {
+  if (logPayType(log) !== 'usd_daily') return '-';
+  const n = Number(log.regularHours || 0) + Number(log.otHours || 0);
+  return `${n}h`;
 }
 
 function fmtRegular(log) {
@@ -652,7 +692,7 @@ async function loadData() {
       .maybeSingle();
     if (error) { console.error(error); showToast('데이터를 불러오지 못했어요: ' + error.message, 'error'); return; }
     if (data) {
-      state.settings = Object.assign({ lastHourlyRate: 0, lastDailyRate: 0, lastOtMultiplier: 1.5, lastUsdDailyRate: 0, lastUsdOtRate: 0 }, data.settings || {});
+      state.settings = Object.assign({ lastHourlyRate: 0, lastDailyRate: 0, lastOtMultiplier: 1.5, lastUsdDailyRate: 0, lastUsdBenefitRate: 0 }, data.settings || {});
       state.workLogs = data.work_logs || [];
     }
   } else {
@@ -671,7 +711,7 @@ async function loadData() {
 function renderAll() {
   updateEntryForm('cal');
   renderLogsTable();
-  renderKpis();
+  renderWeekLookup();
   renderCalendar();
   renderCalDetail();
   renderDashboard();
@@ -718,20 +758,6 @@ function setLinkedUsdValue(usdInput, krwInput, usd) {
   krwInput.value = krwThousand(usd).toLocaleString('ko-KR');
 }
 
-// 기준 금액을 입력하면 연장 시급을 자동으로 1.5배 계산해서 채워줘요
-function syncOtFromBaseRate() {
-  const baseUsdInput = document.getElementById('cal-usd-daily-usd');
-  const otUsdInput = document.getElementById('cal-usd-ot-usd');
-  const otKrwInput = document.getElementById('cal-usd-ot-krw');
-  if (baseUsdInput.value === '') {
-    otUsdInput.value = '';
-    otKrwInput.value = '';
-    return;
-  }
-  const baseUsd = Number(baseUsdInput.value) || 0;
-  setLinkedUsdValue(otUsdInput, otKrwInput, Math.round(baseUsd * 1.5 * 100) / 100);
-}
-
 function updateEntryForm(scopeKey) {
   const cfg = FORM_SCOPES[scopeKey];
   const payType = document.querySelector(`input[name="${cfg.radioName}"]:checked`).value;
@@ -747,7 +773,7 @@ function updateEntryForm(scopeKey) {
   dailyStatusInput.style.display = isDaily ? '' : 'none';
   usdWorkHoursInput.style.display = isUsdDaily ? '' : 'none';
 
-  document.getElementById(cfg.otLbl).textContent = isDaily ? '추가(연장) 근무일수' : (isUsdDaily ? '연장시간' : '추가(연장) 근무시간');
+  document.getElementById(cfg.otLbl).textContent = isDaily ? '추가(연장) 근무일수' : (isUsdDaily ? '초과근무시간' : '추가(연장) 근무시간');
   document.getElementById(cfg.otInput).style.display = isDaily ? 'none' : '';
   document.getElementById(cfg.otDailySelect).style.display = isDaily ? '' : 'none';
   document.getElementById(cfg.rateLbl).textContent = isDaily ? '일급 (원)' : '시급 (원)';
@@ -766,10 +792,10 @@ function updateEntryForm(scopeKey) {
   } else {
     const usdDailyInput = document.getElementById('cal-usd-daily-usd');
     const usdDailyKrwInput = document.getElementById('cal-usd-daily-krw');
-    const usdOtInput = document.getElementById('cal-usd-ot-usd');
-    const usdOtKrwInput = document.getElementById('cal-usd-ot-krw');
+    const usdBenefitInput = document.getElementById('cal-usd-benefit-usd');
+    const usdBenefitKrwInput = document.getElementById('cal-usd-benefit-krw');
     if (state.settings.lastUsdDailyRate && !usdDailyInput.value) setLinkedUsdValue(usdDailyInput, usdDailyKrwInput, state.settings.lastUsdDailyRate);
-    if (state.settings.lastUsdOtRate && !usdOtInput.value) setLinkedUsdValue(usdOtInput, usdOtKrwInput, state.settings.lastUsdOtRate);
+    if (state.settings.lastUsdBenefitRate && !usdBenefitInput.value) setLinkedUsdValue(usdBenefitInput, usdBenefitKrwInput, state.settings.lastUsdBenefitRate);
   }
 
   updateFxHint();
@@ -790,53 +816,109 @@ function renderLogsTable() {
   document.getElementById('logs-count-hint').textContent = `총 ${sorted.length}건`;
 
   if (sorted.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="11">이 달에 등록된 근무 기록이 없어요.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="13">이 달에 등록된 근무 기록이 없어요.</td></tr>`;
     tfoot.innerHTML = '';
     return;
   }
 
-  let sumRegular = 0, sumOt = 0, sumTotal = 0, sumRegularUsd = 0, sumOtUsd = 0, sumTotalUsd = 0;
-  tbody.innerHTML = sorted.map(log => {
+  let sumRegular = 0, sumOt = 0, sumBenefit = 0, sumTotal = 0;
+  let sumRegularUsd = 0, sumOtUsd = 0, sumBenefitUsd = 0, sumTotalUsd = 0;
+  const rowsHtml = [];
+
+  // 미국급여는 주(월~일) 단위로 소계를 넣어줘요 (다른 급여방식은 그대로 월 합계만 표기)
+  let currentWeekKey = null;
+  let wkRegular = 0, wkRegularUsd = 0, wkOt = 0, wkOtUsd = 0, wkBenefit = 0, wkBenefitUsd = 0, wkTotal = 0, wkTotalUsd = 0;
+  let wkHasUsd = false, wkRangeLabel = '';
+
+  function flushWeekSubtotal() {
+    if (wkHasUsd) {
+      rowsHtml.push(`<tr style="background:var(--accent-tint); font-weight:600;">
+        <td></td><td colspan="3">${wkRangeLabel} 미국급여 소계</td>
+        <td></td><td></td><td></td><td></td>
+        <td class="num">${fmtMoney(wkRegular, wkRegularUsd)}</td>
+        <td class="num">${fmtMoney(wkOt, wkOtUsd)}</td>
+        <td class="num">${fmtMoney(wkBenefit, wkBenefitUsd)}</td>
+        <td class="num">${fmtMoney(wkTotal, wkTotalUsd)}</td>
+        <td></td>
+      </tr>`);
+    }
+    wkRegular = wkRegularUsd = wkOt = wkOtUsd = wkBenefit = wkBenefitUsd = wkTotal = wkTotalUsd = 0;
+    wkHasUsd = false;
+  }
+
+  sorted.forEach(log => {
+    const wk = weekKey(log.date);
+    if (currentWeekKey !== null && wk !== currentWeekKey) flushWeekSubtotal();
+    currentWeekKey = wk;
+    const { weekStart, weekEnd } = getWeekContaining(log.date);
+    wkRangeLabel = fmtWeekRange(weekStart, weekEnd);
+
     const c = computeLog(log);
-    sumRegular += c.regularPay; sumOt += c.otPay; sumTotal += c.total;
-    sumRegularUsd += c.regularPayUsd; sumOtUsd += c.otPayUsd; sumTotalUsd += c.totalUsd;
-    return `
-    <tr>
+    sumRegular += c.regularPay; sumOt += c.otPay; sumBenefit += c.benefitPay; sumTotal += c.total;
+    sumRegularUsd += c.regularPayUsd; sumOtUsd += c.otPayUsd; sumBenefitUsd += c.benefitPayUsd; sumTotalUsd += c.totalUsd;
+
+    if (logPayType(log) === 'usd_daily') {
+      wkHasUsd = true;
+      wkRegular += c.regularPay; wkRegularUsd += c.regularPayUsd;
+      wkOt += c.otPay; wkOtUsd += c.otPayUsd;
+      wkBenefit += c.benefitPay; wkBenefitUsd += c.benefitPayUsd;
+      wkTotal += c.total; wkTotalUsd += c.totalUsd;
+    }
+
+    rowsHtml.push(`<tr>
       <td><input type="checkbox" class="log-check" data-id="${log.id}"></td>
+      <td class="num">${fmtWeekLabel(log.date)}</td>
       <td>${log.date || ''}</td>
       <td>${payBadge(log)}</td>
-      <td class="num">${fmtBaseRate(log)}</td>
+      <td class="num">${fmtBaseRate3Line(log)}</td>
       <td class="num">${fmtRegular(log)}</td>
       <td class="num">${fmtOt(log)}</td>
+      <td class="num">${fmtBenefitHours(log)}</td>
       <td class="num">${fmtMoney(c.regularPay, c.regularPayUsd)}</td>
       <td class="num">${fmtMoney(c.otPay, c.otPayUsd)}</td>
+      <td class="num">${logPayType(log) === 'usd_daily' ? fmtMoney(c.benefitPay, c.benefitPayUsd) : '-'}</td>
       <td class="num">${fmtMoney(c.total, c.totalUsd)}</td>
-      <td>${log.memo ? escapeHtml(log.memo) : ''}</td>
       <td style="white-space:nowrap;"><button class="icon-btn" data-edit="${log.id}">수정</button><button class="icon-btn danger" data-del="${log.id}">삭제</button></td>
-    </tr>
-  `;
-  }).join('');
+    </tr>`);
+  });
+  flushWeekSubtotal();
+
+  tbody.innerHTML = rowsHtml.join('');
+
   tfoot.innerHTML = `<tr style="font-weight:600; border-top: 1px solid var(--ink);">
-    <td colspan="6">합계</td>
+    <td colspan="8">합계</td>
     <td class="num">${fmtMoney(sumRegular, sumRegularUsd)}</td>
     <td class="num">${fmtMoney(sumOt, sumOtUsd)}</td>
+    <td class="num">${fmtMoney(sumBenefit, sumBenefitUsd)}</td>
     <td class="num">${fmtMoney(sumTotal, sumTotalUsd)}</td>
-    <td colspan="2"></td>
+    <td></td>
   </tr>`;
 }
 
-function renderKpis() {
-  const monthNum = logsMonthDate.getMonth() + 1;
-  const monthFilter = `${logsMonthDate.getFullYear()}-${pad2(monthNum)}`;
-  const logs = state.workLogs.filter(l => (l.date || '').startsWith(monthFilter));
-  let sumRegular = 0, sumOt = 0, sumRegularUsd = 0, sumOtUsd = 0;
-  logs.forEach(log => { const c = computeLog(log); sumRegular += c.regularPay; sumOt += c.otPay; sumRegularUsd += c.regularPayUsd; sumOtUsd += c.otPayUsd; });
-  document.getElementById('kpi-lbl-regular').textContent = `${monthNum}월 정규급여`;
-  document.getElementById('kpi-lbl-ot').textContent = `${monthNum}월 연장근무수당`;
-  document.getElementById('kpi-lbl-total').textContent = `${monthNum}월 합계`;
-  document.getElementById('kpi-regular').innerHTML = fmtMoney(sumRegular, sumRegularUsd);
-  document.getElementById('kpi-ot').innerHTML = fmtMoney(sumOt, sumOtUsd);
-  document.getElementById('kpi-total').innerHTML = fmtMoney(sumRegular + sumOt, sumRegularUsd + sumOtUsd);
+// ---------- 주간급여 조회 ----------
+function renderWeekLookup() {
+  const dateInput = document.getElementById('week-lookup-date');
+  if (!dateInput.value) {
+    const today = new Date();
+    dateInput.value = dateStr(today.getFullYear(), today.getMonth(), today.getDate());
+  }
+  const { weekStart, weekEnd } = getPayWeekRange(dateInput.value);
+  const weekStartStr = dateStr(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+  const weekEndStr = dateStr(weekEnd.getFullYear(), weekEnd.getMonth(), weekEnd.getDate());
+  document.getElementById('week-lookup-range').textContent = `${weekStartStr} ~ ${weekEndStr} (${pad2(usWeekNumber(weekEnd))}주차)`;
+
+  const logs = state.workLogs.filter(l => l.date >= weekStartStr && l.date <= weekEndStr);
+  let sumRegular = 0, sumOt = 0, sumBenefit = 0, sumTotal = 0;
+  let sumRegularUsd = 0, sumOtUsd = 0, sumBenefitUsd = 0, sumTotalUsd = 0;
+  logs.forEach(log => {
+    const c = computeLog(log);
+    sumRegular += c.regularPay; sumOt += c.otPay; sumBenefit += c.benefitPay; sumTotal += c.total;
+    sumRegularUsd += c.regularPayUsd; sumOtUsd += c.otPayUsd; sumBenefitUsd += c.benefitPayUsd; sumTotalUsd += c.totalUsd;
+  });
+  document.getElementById('week-lookup-regular').innerHTML = fmtMoney(sumRegular, sumRegularUsd);
+  document.getElementById('week-lookup-ot').innerHTML = fmtMoney(sumOt, sumOtUsd);
+  document.getElementById('week-lookup-benefit').innerHTML = fmtMoney(sumBenefit, sumBenefitUsd);
+  document.getElementById('week-lookup-total').innerHTML = fmtMoney(sumTotal, sumTotalUsd);
 }
 
 // ---------- 급여현황 ----------
@@ -941,6 +1023,53 @@ function updateMultiSelectCount() {
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 function dateStr(y, m, d) { return `${y}-${pad2(m + 1)}-${pad2(d)}`; }
+
+// 미국식 주차: 일요일에 끝나는 한 주(월~일) 기준.
+// 근무 기록을 주 단위로 묶을 때는 그 날짜가 실제로 속한 주(월~일)를 사용해요.
+function getWeekContaining(ds) {
+  const d = new Date(ds + 'T00:00:00');
+  const dow = d.getDay(); // 0=일요일
+  const daysFromMonday = (dow + 6) % 7; // 월=0 ... 일=6
+  const weekStart = new Date(d);
+  weekStart.setDate(d.getDate() - daysFromMonday);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  return { weekStart, weekEnd };
+}
+
+// 주간급여 조회용: 조회일이 속한 주가 아직 안 끝났으면, 조회일 이전에 가장 최근에 끝난 주를 보여줘요.
+function getPayWeekRange(ds) {
+  const d = new Date(ds + 'T00:00:00');
+  const dow = d.getDay(); // 0=일요일
+  const weekEnd = new Date(d);
+  weekEnd.setDate(d.getDate() - dow);
+  const weekStart = new Date(weekEnd);
+  weekStart.setDate(weekEnd.getDate() - 6);
+  return { weekStart, weekEnd };
+}
+
+function usWeekNumber(weekEnd) {
+  const year = weekEnd.getFullYear();
+  const jan1 = new Date(year, 0, 1);
+  const jan1Dow = jan1.getDay();
+  const daysSinceJan1 = Math.round((weekEnd - jan1) / 86400000);
+  return Math.floor((daysSinceJan1 + jan1Dow) / 7) + 1;
+}
+
+function weekKey(ds) {
+  const { weekStart } = getWeekContaining(ds);
+  return dateStr(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+}
+
+function fmtWeekRange(weekStart, weekEnd) {
+  return `${weekStart.getMonth() + 1}/${weekStart.getDate()}~${weekEnd.getMonth() + 1}/${weekEnd.getDate()}`;
+}
+
+function fmtWeekLabel(ds) {
+  const { weekStart, weekEnd } = getWeekContaining(ds);
+  const wn = usWeekNumber(weekEnd);
+  return `${pad2(wn)}주차<br><span style="font-size:11px; color:var(--ink-faint);">(${fmtWeekRange(weekStart, weekEnd)})</span>`;
+}
 
 // 대한민국 법정공휴일 (2025~2027, 대체공휴일 포함). 이후 연도는 필요 시 추가해 주세요.
 const KR_HOLIDAYS = {
@@ -1168,7 +1297,7 @@ function startEditLog(log) {
 
   if (log.payType === 'usd_daily') {
     setLinkedUsdValue(document.getElementById('cal-usd-daily-usd'), document.getElementById('cal-usd-daily-krw'), log.dailyRateUsd || 0);
-    setLinkedUsdValue(document.getElementById('cal-usd-ot-usd'), document.getElementById('cal-usd-ot-krw'), log.otRateUsd || 0);
+    setLinkedUsdValue(document.getElementById('cal-usd-benefit-usd'), document.getElementById('cal-usd-benefit-krw'), log.benefitRateUsd || 0);
     document.getElementById('cal-usd-work-hours').value = log.dayStatus === 'off' ? 'off' : String(log.regularHours || 1);
     document.getElementById('cal-add-ot').value = log.otHours || 0;
   } else if (log.payType === 'daily') {
@@ -1194,7 +1323,9 @@ function escapeHtml(str) {
 
 // ---------- 이벤트 ----------
 function updateKpiRowVisibility(tabName) {
-  document.getElementById('kpi-row').style.display = (tabName === 'calendar' || tabName === 'dashboard') ? 'none' : '';
+  const isLogs = tabName === 'logs';
+  document.getElementById('week-lookup-card').style.display = isLogs ? '' : 'none';
+  if (isLogs) renderWeekLookup();
 }
 
 document.querySelectorAll('.tab').forEach(tab => {
@@ -1211,9 +1342,7 @@ document.querySelectorAll('.tab').forEach(tab => {
 document.getElementById('cal-pay-type-row').addEventListener('change', () => updateEntryForm('cal'));
 
 linkCurrencyInputs(document.getElementById('cal-usd-daily-usd'), document.getElementById('cal-usd-daily-krw'));
-linkCurrencyInputs(document.getElementById('cal-usd-ot-usd'), document.getElementById('cal-usd-ot-krw'));
-document.getElementById('cal-usd-daily-usd').addEventListener('input', syncOtFromBaseRate);
-document.getElementById('cal-usd-daily-krw').addEventListener('input', syncOtFromBaseRate);
+linkCurrencyInputs(document.getElementById('cal-usd-benefit-usd'), document.getElementById('cal-usd-benefit-krw'));
 
 function readRegularEntry(scopeKey) {
   const cfg = FORM_SCOPES[scopeKey];
@@ -1239,7 +1368,7 @@ function readOtEntry(scopeKey) {
     const v = document.getElementById(cfg.otDailySelect).value;
     return { otHours: Number(v) || 0, raw: v };
   }
-  // 시급제 & 시급+연장시급 둘 다 실제 연장근무 시간을 그대로 입력받아요
+  // 시급제 & 미국급여 둘 다 실제 초과근무 시간을 그대로 입력받아요
   const raw = document.getElementById(cfg.otInput).value;
   return { otHours: Number(raw) || 0, raw };
 }
@@ -1249,7 +1378,7 @@ function rememberRate(payType, rate, otMultiplier, extra) {
     state.settings.lastDailyRate = rate;
   } else if (payType === 'usd_daily') {
     state.settings.lastUsdDailyRate = extra.dailyRateUsd;
-    state.settings.lastUsdOtRate = extra.otRateUsd;
+    state.settings.lastUsdBenefitRate = extra.benefitRateUsd;
   } else {
     state.settings.lastHourlyRate = rate;
     state.settings.lastOtMultiplier = otMultiplier;
@@ -1283,7 +1412,7 @@ document.getElementById('logs-tbody').addEventListener('click', (e) => {
     state.workLogs = state.workLogs.filter(l => l.id !== delId);
     scheduleSave();
     renderLogsTable();
-    renderKpis();
+    renderWeekLookup();
     renderDashboard();
   }
 });
@@ -1299,20 +1428,22 @@ document.getElementById('delete-selected-logs-btn').addEventListener('click', ()
   state.workLogs = state.workLogs.filter(l => !ids.includes(l.id));
   scheduleSave();
   renderLogsTable();
-  renderKpis();
+  renderWeekLookup();
   renderDashboard();
 });
 
 document.getElementById('logs-prev-btn').addEventListener('click', () => {
   logsMonthDate.setMonth(logsMonthDate.getMonth() - 1);
   renderLogsTable();
-  renderKpis();
+  renderWeekLookup();
 });
 document.getElementById('logs-next-btn').addEventListener('click', () => {
   logsMonthDate.setMonth(logsMonthDate.getMonth() + 1);
   renderLogsTable();
-  renderKpis();
+  renderWeekLookup();
 });
+
+document.getElementById('week-lookup-date').addEventListener('change', renderWeekLookup);
 
 document.getElementById('dash-prev-btn').addEventListener('click', () => {
   dashYear -= 1;
@@ -1420,7 +1551,7 @@ document.getElementById('cal-multiselect-delete').addEventListener('click', () =
   state.workLogs = state.workLogs.filter(l => !targetDates.has(l.date));
   scheduleSave();
   renderLogsTable();
-  renderKpis();
+  renderWeekLookup();
   renderDashboard();
   showToast(`${targetCount}건의 근무 기록을 삭제했어요.`, 'success');
   exitMultiSelectMode();
@@ -1435,8 +1566,8 @@ function resetCalAddForm() {
   document.getElementById('cal-add-memo').value = '';
   document.getElementById('cal-usd-daily-usd').value = '';
   document.getElementById('cal-usd-daily-krw').value = '';
-  document.getElementById('cal-usd-ot-usd').value = '';
-  document.getElementById('cal-usd-ot-krw').value = '';
+  document.getElementById('cal-usd-benefit-usd').value = '';
+  document.getElementById('cal-usd-benefit-krw').value = '';
   // 방금 등록한 금액을 기억해서, 다음 날짜 등록 시에도 자동으로 채워줘요
   updateEntryForm('cal');
 }
@@ -1454,9 +1585,9 @@ document.getElementById('cal-add-btn').addEventListener('click', () => {
   let logBase;
   if (entry.payType === 'usd_daily') {
     const dailyRateUsd = Number(document.getElementById('cal-usd-daily-usd').value) || 0;
-    const otRateUsd = Number(document.getElementById('cal-usd-ot-usd').value) || 0;
-    logBase = { payType: entry.payType, dailyRateUsd, otRateUsd, regularHours: entry.regularHours, dayStatus: entry.dayStatus, otHours: otEntry.otHours };
-    rememberRate(entry.payType, null, null, { dailyRateUsd, otRateUsd });
+    const benefitRateUsd = Number(document.getElementById('cal-usd-benefit-usd').value) || 0;
+    logBase = { payType: entry.payType, dailyRateUsd, benefitRateUsd, regularHours: entry.regularHours, dayStatus: entry.dayStatus, otHours: otEntry.otHours };
+    rememberRate(entry.payType, null, null, { dailyRateUsd, benefitRateUsd });
   } else {
     const rate = Number(document.getElementById('cal-add-rate').value) || 0;
     const otMultiplier = Number(document.getElementById('cal-add-ot-multiplier').value) || 1.5;
@@ -1473,7 +1604,7 @@ document.getElementById('cal-add-btn').addEventListener('click', () => {
     resetCalAddForm();
     scheduleSave();
     renderLogsTable();
-    renderKpis();
+    renderWeekLookup();
     renderDashboard();
     showToast('근무 기록을 수정했어요.', 'success');
     renderCalendar();
@@ -1494,7 +1625,7 @@ document.getElementById('cal-add-btn').addEventListener('click', () => {
 
   scheduleSave();
   renderLogsTable();
-  renderKpis();
+  renderWeekLookup();
   renderDashboard();
 
   if (calModalMode === 'bulk') {
@@ -1523,7 +1654,7 @@ document.getElementById('cal-detail-tbody').addEventListener('click', (e) => {
     state.workLogs = state.workLogs.filter(l => l.id !== delId);
     scheduleSave();
     renderLogsTable();
-    renderKpis();
+    renderWeekLookup();
     renderDashboard();
     renderCalendar();
     renderCalDetail();
@@ -1563,7 +1694,7 @@ document.getElementById('backup-import-input').addEventListener('change', async 
     const data = JSON.parse(text);
     if (!data || typeof data !== 'object' || !Array.isArray(data.workLogs)) throw new Error('invalid format');
     if (!confirm('백업 파일을 불러오면 현재 저장된 모든 근무 기록이 백업 파일 내용으로 덮어써져요. 계속할까요?')) return;
-    state.settings = Object.assign({ lastHourlyRate: 0, lastDailyRate: 0, lastOtMultiplier: 1.5, lastUsdDailyRate: 0, lastUsdOtRate: 0 }, data.settings || {});
+    state.settings = Object.assign({ lastHourlyRate: 0, lastDailyRate: 0, lastOtMultiplier: 1.5, lastUsdDailyRate: 0, lastUsdBenefitRate: 0 }, data.settings || {});
     state.workLogs = data.workLogs;
     scheduleSave();
     renderAll();
@@ -1588,7 +1719,7 @@ document.getElementById('toggle-amounts-btn').addEventListener('click', () => {
   try { localStorage.setItem('salary_amounts_hidden', amountsHidden ? '1' : '0'); } catch (e) {}
   applyAmountsHiddenLabel();
   renderLogsTable();
-  renderKpis();
+  renderWeekLookup();
   renderDashboard();
   renderCalendar();
   renderCalDetail();
