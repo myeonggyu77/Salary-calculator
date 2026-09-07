@@ -37,9 +37,26 @@
   body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); }
   .app { max-width: 900px; margin: 0 auto; padding: 28px 24px 60px; }
 
-  /* PC(넓은 화면)에서는 레이아웃을 1.5배 키워서 보여줘요. 휴대폰(좁은 화면)은 그대로예요. */
+  /* PC(넓은 화면)용 레이아웃: 그냥 확대하는 대신, 넓어진 폭에 맞춰 여백·글자 크기·카드
+     구성을 다시 짜서 한눈에 훑어볼 수 있게 해요. 휴대폰 화면은 위 스타일 그대로예요. */
   @media (min-width: 1024px) {
-    .app { zoom: 1.68; }
+    .app { max-width: 1440px; padding: 44px 56px 90px; }
+    .masthead h1 { font-size: 26px; }
+    .masthead .sub { font-size: 13px; }
+    .tabs { margin-bottom: 26px; }
+    .tab { font-size: 14px; padding: 11px 4px; margin-right: 28px; }
+    .form-card, .dash-chart-card { padding: 22px 26px; }
+    .kpi, .cal-month-summary .item, .dash-summary .item { padding: 18px 20px; }
+    .kpi .val { font-size: 24px; }
+    .kpi .lbl { font-size: 12px; }
+    .cal-month-summary .item .val { font-size: 15px; }
+    .cal-month-summary .item .lbl { font-size: 11px; }
+    .dash-summary .item .val { font-size: 22px; }
+    table { font-size: 14px; }
+    thead th { padding: 12px 14px; font-size: 11.5px; }
+    tbody td { padding: 13px 14px; }
+    .cal-cell { min-height: 96px; }
+    .cal-grid { gap: 6px; }
   }
 
   .masthead { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; row-gap: 10px; margin-bottom: 22px; padding-bottom: 16px; border-bottom: 1px solid var(--ink); }
@@ -49,10 +66,16 @@
 
   .banner { font-size: 12px; padding: 8px 12px; border-radius: 4px; margin-bottom: 16px; background: var(--accent-soft); color: var(--accent); }
 
-  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 24px; }
-  .kpi { background: var(--paper-raised); padding: 14px 16px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(20,30,25,0.05); }
+  .kpi { background: var(--paper-raised); padding: 14px 16px; border-top: 3px solid var(--line); }
   .kpi .lbl { font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; white-space: nowrap; }
   .kpi .val { font-family: var(--mono); font-size: 18px; font-weight: 600; }
+  /* 정규급여/초과수당/복리후생/합계 순서로 색을 맞춰서, 표·달력 배지와 같은 언어로 한눈에 구분되게 해요 */
+  .kpi-row .kpi:nth-child(1) { border-top-color: #0f6e56; }
+  .kpi-row .kpi:nth-child(2) { border-top-color: #d97a1f; }
+  .kpi-row .kpi:nth-child(3) { border-top-color: #2563a8; }
+  .kpi-row .kpi:nth-child(4) { border-top-color: var(--ink); }
+  .kpi-row .kpi:nth-child(4) .val { font-weight: 700; }
 
   .tabs { display: flex; gap: 2px; margin-bottom: 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
   .tab { font-family: var(--sans); font-size: 13px; font-weight: 500; color: var(--ink-faint); background: none; border: none; padding: 9px 4px; margin-right: 18px; cursor: pointer; border-bottom: 2px solid transparent; position: relative; top: 1px; white-space: nowrap; }
@@ -75,7 +98,7 @@
   button.icon-btn.danger { color: var(--down); border-color: var(--down-soft); }
   button.icon-btn.danger:hover { background: var(--down-soft); }
 
-  .form-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 4px; padding: 16px; margin-bottom: 16px; }
+  .form-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 6px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(20,30,25,0.05); }
   .form-card h3 { font-size: 13px; font-weight: 600; margin: 0 0 12px; }
   .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 10px; }
   input, select { font-family: var(--sans); font-size: 13px; border: 1px solid var(--line); border-radius: 3px; padding: 0 9px; background: var(--paper); color: var(--ink); width: 100%; height: 34px; }
@@ -90,13 +113,21 @@
   .radio-row input[type="radio"] { width: auto; height: auto; }
 
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ink-faint); font-weight: 500; padding: 8px; border-bottom: 1px solid var(--ink); white-space: nowrap; }
+  thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ink-faint); font-weight: 500; padding: 8px; border-bottom: 1px solid var(--ink); white-space: nowrap; background: var(--paper-raised); position: sticky; top: 0; z-index: 1; }
   th.num, td.num { text-align: right; font-family: var(--mono); }
   tbody td { padding: 10px 8px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+  tbody tr:nth-child(odd) { background: var(--paper); }
   tbody tr:hover { background: var(--accent-tint); }
   .empty-row td { text-align: center; color: var(--ink-faint); padding: 24px; }
-  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; }
+  .table-wrap { overflow: auto; max-height: 62vh; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 1px 3px rgba(20,30,25,0.05); }
   .table-wrap table { min-width: 900px; }
+  tfoot td { position: sticky; bottom: 0; background: var(--paper-raised); border-top: 2px solid var(--ink); }
+  /* 정규급여/초과수당/복리후생/합계 칸을 옅은 색으로 구분해서 표를 한눈에 훑어보기 쉽게 해요 */
+  td.col-regular { background: rgba(15,110,86,0.05); }
+  td.col-ot { background: rgba(217,122,31,0.07); }
+  td.col-benefit { background: rgba(37,99,168,0.07); }
+  td.col-total { background: rgba(26,36,32,0.06); font-weight: 700; }
+  tbody tr:hover td.col-regular, tbody tr:hover td.col-ot, tbody tr:hover td.col-benefit, tbody tr:hover td.col-total { background: var(--accent-tint); }
 
   .cal-header { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 14px; }
   .cal-header .cal-title { font-size: 15px; font-weight: 600; min-width: 110px; text-align: center; }
@@ -130,12 +161,17 @@
   .cal-pay { font-size: 9px; line-height: 1.25; font-family: var(--mono); color: var(--ink-soft); margin-top: 3px; text-align: center; max-width: 100%; }
   .cal-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; font-size: 11px; color: var(--ink-soft); }
   .cal-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
-  .cal-month-summary { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 14px; }
-  .cal-month-summary .item { flex: 1; min-width: 0; background: var(--paper-raised); padding: 10px 6px; }
+  .cal-month-summary { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-top: 14px; box-shadow: 0 1px 3px rgba(20,30,25,0.05); }
+  .cal-month-summary .item { flex: 1; min-width: 0; background: var(--paper-raised); padding: 10px 6px; border-top: 3px solid var(--line); }
+  .cal-month-summary .item:nth-child(1) { border-top-color: #64748b; }
+  .cal-month-summary .item:nth-child(2) { border-top-color: #0f6e56; }
+  .cal-month-summary .item:nth-child(3) { border-top-color: #d97a1f; }
+  .cal-month-summary .item:nth-child(4) { border-top-color: var(--ink); }
+  .cal-month-summary .item:nth-child(4) .val { font-weight: 700; }
   .cal-month-summary .item .lbl { font-size: 10px; color: var(--ink-faint); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cal-month-summary .item .val { font-family: var(--mono); font-size: 11px; font-weight: 600; line-height: 1.45; word-break: break-word; }
 
-  .dash-chart-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 4px; padding: 16px; margin-bottom: 16px; }
+  .dash-chart-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 6px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(20,30,25,0.05); }
   .dash-chart-card h3 { font-size: 13px; font-weight: 600; margin: 0 0 4px; }
   .dash-chart-legend { font-size: 11px; color: var(--ink-faint); margin-bottom: 14px; }
   .dash-chart-legend .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: 1px; background: linear-gradient(180deg, #f5c15c, #d99a1f); }
@@ -147,7 +183,10 @@
   .dash-bar.is-max { background: linear-gradient(180deg, #f5c15c, #d99a1f); }
   .dash-bar-label { font-size: 10px; color: var(--ink-faint); margin-top: 6px; white-space: nowrap; }
   .dash-bar-col.is-current .dash-bar-label { color: var(--ink); font-weight: 700; }
-  .dash-summary { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 16px; }
+  .dash-summary { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(20,30,25,0.05); }
+  .dash-summary .item { border-top: 3px solid var(--line); }
+  .dash-summary .item:nth-child(1) { border-top-color: var(--accent); }
+  .dash-summary .item:nth-child(2) { border-top-color: #d97a1f; }
   .dash-summary .item { flex: 1; background: var(--paper-raised); padding: 12px 14px; }
   .dash-summary .item .lbl { font-size: 11px; color: var(--ink-faint); margin-bottom: 4px; }
   .dash-summary .item .val { font-family: var(--mono); font-size: 16px; font-weight: 600; }
@@ -835,10 +874,10 @@ function renderLogsTable() {
       rowsHtml.push(`<tr style="background:var(--accent-tint); font-weight:600;">
         <td></td><td colspan="3">${wkRangeLabel} 미국급여 소계</td>
         <td></td><td></td><td></td><td></td>
-        <td class="num">${fmtMoney(wkRegular, wkRegularUsd)}</td>
-        <td class="num">${fmtMoney(wkOt, wkOtUsd)}</td>
-        <td class="num">${fmtMoney(wkBenefit, wkBenefitUsd)}</td>
-        <td class="num">${fmtMoney(wkTotal, wkTotalUsd)}</td>
+        <td class="num col-regular">${fmtMoney(wkRegular, wkRegularUsd)}</td>
+        <td class="num col-ot">${fmtMoney(wkOt, wkOtUsd)}</td>
+        <td class="num col-benefit">${fmtMoney(wkBenefit, wkBenefitUsd)}</td>
+        <td class="num col-total">${fmtMoney(wkTotal, wkTotalUsd)}</td>
         <td></td>
       </tr>`);
     }
@@ -874,10 +913,10 @@ function renderLogsTable() {
       <td class="num">${fmtRegular(log)}</td>
       <td class="num">${fmtOt(log)}</td>
       <td class="num">${fmtBenefitHours(log)}</td>
-      <td class="num">${fmtMoney(c.regularPay, c.regularPayUsd)}</td>
-      <td class="num">${fmtMoney(c.otPay, c.otPayUsd)}</td>
-      <td class="num">${logPayType(log) === 'usd_daily' ? fmtMoney(c.benefitPay, c.benefitPayUsd) : '-'}</td>
-      <td class="num">${fmtMoney(c.total, c.totalUsd)}</td>
+      <td class="num col-regular">${fmtMoney(c.regularPay, c.regularPayUsd)}</td>
+      <td class="num col-ot">${fmtMoney(c.otPay, c.otPayUsd)}</td>
+      <td class="num col-benefit">${logPayType(log) === 'usd_daily' ? fmtMoney(c.benefitPay, c.benefitPayUsd) : '-'}</td>
+      <td class="num col-total">${fmtMoney(c.total, c.totalUsd)}</td>
       <td style="white-space:nowrap;"><button class="icon-btn" data-edit="${log.id}">수정</button><button class="icon-btn danger" data-del="${log.id}">삭제</button></td>
     </tr>`);
   });
@@ -887,10 +926,10 @@ function renderLogsTable() {
 
   tfoot.innerHTML = `<tr style="font-weight:600; border-top: 1px solid var(--ink);">
     <td colspan="8">합계</td>
-    <td class="num">${fmtMoney(sumRegular, sumRegularUsd)}</td>
-    <td class="num">${fmtMoney(sumOt, sumOtUsd)}</td>
-    <td class="num">${fmtMoney(sumBenefit, sumBenefitUsd)}</td>
-    <td class="num">${fmtMoney(sumTotal, sumTotalUsd)}</td>
+    <td class="num col-regular">${fmtMoney(sumRegular, sumRegularUsd)}</td>
+    <td class="num col-ot">${fmtMoney(sumOt, sumOtUsd)}</td>
+    <td class="num col-benefit">${fmtMoney(sumBenefit, sumBenefitUsd)}</td>
+    <td class="num col-total">${fmtMoney(sumTotal, sumTotalUsd)}</td>
     <td></td>
   </tr>`;
 }
