@@ -234,8 +234,9 @@
        달력 오른쪽에 항상 붙어있는 패널에서 입력해요. */
     #panel-calendar.active { display: flex; align-items: flex-start; gap: 28px; }
     .cal-main { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; min-height: calc(100vh - 300px); }
-    .cal-grid { flex: 1 1 0; min-height: 420px; grid-template-rows: auto repeat(6, minmax(0, 1fr)); }
+    .cal-grid { flex: 1 1 0; grid-template-rows: auto repeat(6, minmax(120px, 1fr)); }
     .cal-cell:not(.empty) { height: 100%; min-height: 0; justify-content: center; }
+    .cal-pay { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #cal-modal-overlay { display: block !important; position: sticky; top: 20px; inset: auto; background: none; padding: 0; z-index: auto; flex: 0 0 420px; min-width: 0; align-self: flex-start; }
     #cal-modal-overlay .modal-card { width: 100%; max-width: none; max-height: none; box-shadow: 0 1px 3px rgba(20,30,25,0.05); border: 1px solid var(--line); }
     #cal-detail-table-wrap table { min-width: 0; font-size: 13px; }
@@ -1200,6 +1201,18 @@ function renderCalendar() {
   const firstWeekday = new Date(y, m, 1).getDay();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
   const todayStr = dateStr(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+
+  // PC에서는 그 달에 실제로 필요한 주(행) 수만큼만 세로 공간을 나눠서, 5주짜리 달인데
+  // 6주 몫의 빈 칸이 남아 아래쪽(범례/이 달 현황)이 화면 밖으로 밀려나지 않게 해요.
+  const calGridEl = document.getElementById('cal-grid');
+  if (window.innerWidth >= 1024) {
+    const weeksNeeded = Math.ceil((firstWeekday + daysInMonth) / 7);
+    calGridEl.style.gridTemplateRows = `auto repeat(${weeksNeeded}, minmax(120px, 1fr))`;
+    calGridEl.style.minHeight = (44 + weeksNeeded * 120) + 'px';
+  } else {
+    calGridEl.style.gridTemplateRows = '';
+    calGridEl.style.minHeight = '';
+  }
 
   const dowNames = ['일', '월', '화', '수', '목', '금', '토'];
   let html = dowNames.map((d, i) => `<div class="cal-dow${i === 0 ? ' sun' : i === 6 ? ' sat' : ''}">${d}</div>`).join('');
