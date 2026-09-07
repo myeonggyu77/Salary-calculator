@@ -201,44 +201,44 @@
      휴대폰 화면은 위쪽 기본 스타일 그대로예요.
      ============================================================ */
   @media (min-width: 1024px) {
-    .app { max-width: none; width: 100%; padding: clamp(36px, 3.5vw, 64px) clamp(32px, 4vw, 96px) clamp(60px, 6vw, 110px); }
-    .masthead h1 { font-size: clamp(34px, 2.6vw, 52px); }
-    .masthead .sub { font-size: clamp(16px, 1.3vw, 20px); }
-    .tabs { margin-bottom: clamp(24px, 2vw, 36px); }
-    .tab { font-size: clamp(18px, 1.5vw, 24px); padding: clamp(12px, 1vw, 17px) 4px; margin-right: clamp(24px, 2.4vw, 44px); }
-    button.primary-btn, button.ghost-btn { font-size: clamp(17px, 1.3vw, 21px); padding: clamp(12px, 1vw, 17px) clamp(20px, 1.8vw, 30px); }
-    .form-card, .dash-chart-card { padding: clamp(32px, 3vw, 56px); }
-    .form-card h3, .dash-chart-card h3 { font-size: clamp(20px, 1.6vw, 27px); }
-    .kpi-row { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-    .kpi, .cal-month-summary .item, .dash-summary .item { padding: clamp(30px, 3vw, 56px); }
-    .kpi .lbl, .dash-summary .item .lbl { font-size: clamp(16px, 1.3vw, 20px); margin-bottom: clamp(9px, 0.9vw, 16px); }
-    .kpi .val, .dash-summary .item .val { font-size: clamp(38px, 3vw, 58px); }
-    .cal-month-summary .item .val { font-size: clamp(25px, 2.3vw, 38px); line-height: 1.5; }
-    .cal-month-summary .item .lbl { font-size: clamp(15px, 1.3vw, 19px); margin-bottom: clamp(7px, 0.7vw, 12px); }
-    table { font-size: clamp(18px, 1.4vw, 24px); }
-    thead th { padding: clamp(17px, 1.5vw, 27px); font-size: clamp(16px, 1.2vw, 20px); }
-    tbody td { padding: clamp(19px, 1.6vw, 30px); }
-    .field-lbl { font-size: clamp(15px, 1.1vw, 19px); }
-    .form-note, .hint { font-size: clamp(16px, 1.2vw, 20px); }
-    input, select { font-size: clamp(18px, 1.3vw, 23px); height: clamp(48px, 3.8vw, 62px); }
-    .cal-grid { gap: clamp(6px, 0.8vw, 14px); }
-    .cal-header .cal-title { font-size: clamp(22px, 1.7vw, 30px); }
-    .cal-daynum { font-size: clamp(16px, 1.3vw, 21px); }
-    .cal-work-badge { font-size: clamp(15px, 1.2vw, 19px); padding: clamp(3px, 0.3vw, 5px) clamp(6px, 0.5vw, 10px); }
-    .cal-pay { font-size: clamp(14px, 1.1vw, 17px); }
-    .cal-legend { font-size: clamp(15px, 1.1vw, 18px); }
-    .dash-bar-val, .dash-bar-label { font-size: clamp(14px, 1.1vw, 17px); }
-    .dash-analysis ul { font-size: clamp(17px, 1.3vw, 22px); }
-    .pay-badge { font-size: clamp(15px, 1.2vw, 19px); padding: clamp(4px, 0.4vw, 6px) clamp(9px, 0.7vw, 13px); }
+    .app { max-width: 1600px; width: 100%; margin: 0 auto; padding: 40px 56px 64px; }
+    .masthead h1 { font-size: 26px; }
+    .masthead .sub { font-size: 13px; }
+    .tabs { margin-bottom: 24px; }
+    .tab { font-size: 15px; padding: 11px 4px; margin-right: 28px; }
+    button.primary-btn, button.ghost-btn { font-size: 14px; padding: 11px 20px; }
+    .form-card, .dash-chart-card { padding: 24px; }
+    .form-card h3, .dash-chart-card h3 { font-size: 17px; }
+    .kpi-row { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+    .kpi, .cal-month-summary .item, .dash-summary .item { padding: 22px; }
+    .kpi .lbl, .dash-summary .item .lbl { font-size: 13px; margin-bottom: 8px; }
+    .kpi .val, .dash-summary .item .val { font-size: 28px; }
+    .cal-month-summary .item .val { font-size: 18px; line-height: 1.4; }
+    .cal-month-summary .item .lbl { font-size: 12px; margin-bottom: 6px; }
+    table { font-size: 15px; }
+    thead th { padding: 14px; font-size: 13px; }
+    tbody td { padding: 15px; }
+    .field-lbl { font-size: 12px; }
+    .form-note, .hint { font-size: 13px; }
+    input, select { font-size: 14px; height: 40px; }
+    .cal-grid { gap: 8px; }
+    .cal-header .cal-title { font-size: 20px; }
+    .cal-daynum { font-size: 14px; }
+    .cal-work-badge { font-size: 12px; padding: 3px 7px; }
+    .cal-pay { font-size: 12px; }
+    .cal-legend { font-size: 13px; }
+    .dash-bar-val, .dash-bar-label { font-size: 12px; }
+    .dash-analysis ul { font-size: 15px; }
+    .pay-badge { font-size: 12px; padding: 4px 9px; }
 
     /* 달력: 세로 공간을 화면 높이에 맞춰 꽉 채우고, 날짜 등록은 팝업 대신
        달력 오른쪽에 항상 붙어있는 패널에서 입력해요. */
     #panel-calendar.active { display: flex; align-items: flex-start; gap: 28px; }
     .cal-main { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; min-height: calc(100vh - 300px); }
-    .cal-grid { flex: 1 1 0; grid-template-rows: auto repeat(6, minmax(120px, 1fr)); }
+    .cal-grid { flex: 1 1 0; grid-template-rows: auto repeat(6, minmax(96px, 1fr)); }
     .cal-cell:not(.empty) { height: 100%; min-height: 0; justify-content: center; }
     .cal-pay { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    #cal-modal-overlay { display: block !important; position: sticky; top: 20px; inset: auto; background: none; padding: 0; z-index: auto; flex: 0 0 420px; min-width: 0; align-self: flex-start; }
+    #cal-modal-overlay { display: block !important; position: sticky; top: 20px; inset: auto; background: none; padding: 0; z-index: auto; flex: 0 0 380px; min-width: 0; align-self: flex-start; }
     #cal-modal-overlay .modal-card { width: 100%; max-width: none; max-height: none; box-shadow: 0 1px 3px rgba(0,0,0,0.35); border: 1px solid var(--line); }
     #cal-detail-table-wrap table { min-width: 0; font-size: 13px; }
     #cal-detail-table-wrap thead th { padding: 8px; font-size: 11px; }
@@ -1208,8 +1208,8 @@ function renderCalendar() {
   const calGridEl = document.getElementById('cal-grid');
   if (window.innerWidth >= 1024) {
     const weeksNeeded = Math.ceil((firstWeekday + daysInMonth) / 7);
-    calGridEl.style.gridTemplateRows = `auto repeat(${weeksNeeded}, minmax(120px, 1fr))`;
-    calGridEl.style.minHeight = (44 + weeksNeeded * 120) + 'px';
+    calGridEl.style.gridTemplateRows = `auto repeat(${weeksNeeded}, minmax(96px, 1fr))`;
+    calGridEl.style.minHeight = (36 + weeksNeeded * 96) + 'px';
   } else {
     calGridEl.style.gridTemplateRows = '';
     calGridEl.style.minHeight = '';
