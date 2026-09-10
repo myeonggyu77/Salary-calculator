@@ -521,11 +521,67 @@ async function fetchUsdKrwRate() {
 }
 
 function updateFxHint() {
-  const text = `현재 환율: $1 = ${Math.round(usdKrwRate).toLocaleString('ko-KR')}원 (자동 적용)`;
+  const isPastDateEntry = calModalMode === 'single' && !!selectedDate;
+  const hintRate = isPastDateEntry ? resolveFxRate(selectedDate) : usdKrwRate;
+  const label = isPastDateEntry ? `${selectedDate} 환율` : '현재 환율';
+  const text = `${label}: $1 = ${Math.round(hintRate).toLocaleString('ko-KR')}원 (자동 적용)`;
   const fxHint = document.getElementById('cal-fx-hint');
   if (fxHint) fxHint.textContent = text;
   const fxSub = document.getElementById('fx-rate-sub');
   if (fxSub) fxSub.textContent = `환율 $1 = ₩${Math.round(usdKrwRate).toLocaleString('ko-KR')}`;
+}
+
+// ---------- 과거 환율(미국급여 항목은 등록된 날짜의 환율로 계산해요) ----------
+let fxRatesByDate = {}; // 'YYYY-MM-DD' -> 그 날짜의 USD/KRW 환율
+let fxHistoryFetchedRange = null; // { min, max } 이미 가져온 범위(중복 조회 방지)
+
+function usdDailyLogDates() {
+  return state.workLogs.filter(l => l.payType === 'usd_daily').map(l => l.date).filter(Boolean);
+}
+
+// 주말/공휴일 등 환율 데이터가 없는 날은 가장 최근 이전 영업일 환율을 사용해요.
+function resolveFxRate(ds) {
+  if (fxRatesByDate[ds] != null) return fxRatesByDate[ds];
+  const d = new Date(ds + 'T00:00:00');
+  for (let i = 1; i <= 10; i++) {
+    d.setDate(d.getDate() - 1);
+    const prev = dateStr(d.getFullYear(), d.getMonth(), d.getDate());
+    if (fxRatesByDate[prev] != null) return fxRatesByDate[prev];
+  }
+  return usdKrwRate; // 못 찾으면 실시간 환율로 대체
+}
+
+async function fetchHistoricalFxRates(dates) {
+  if (!dates || dates.length === 0) return;
+  const sorted = [...dates].sort();
+  const todayStr = dateStr(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  const minDate = sorted[0];
+  const maxDate = sorted[sorted.length - 1] > todayStr ? todayStr : sorted[sorted.length - 1];
+  try {
+    const res = await fetch(`https://api.frankfurter.app/${minDate}..${maxDate}?from=USD&to=KRW`);
+    const data = await res.json();
+    if (data && data.rates) {
+      Object.keys(data.rates).forEach(d => {
+        if (data.rates[d] && data.rates[d].KRW) fxRatesByDate[d] = data.rates[d].KRW;
+      });
+    }
+  } catch (e) {
+    console.error('과거 환율 조회 실패', e);
+  }
+}
+
+// 미국급여 항목의 날짜 범위가 바뀔 때(새 항목 등록/수정, 백업 복원 등) 필요한 만큼만 다시 가져와요.
+async function syncHistoricalFxRates() {
+  const dates = usdDailyLogDates();
+  if (dates.length === 0) return;
+  const sorted = [...dates].sort();
+  const todayStr = dateStr(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  const minDate = sorted[0];
+  const maxDate = sorted[sorted.length - 1] > todayStr ? todayStr : sorted[sorted.length - 1];
+  if (fxHistoryFetchedRange && minDate >= fxHistoryFetchedRange.min && maxDate <= fxHistoryFetchedRange.max) return;
+  await fetchHistoricalFxRates([minDate, maxDate]);
+  fxHistoryFetchedRange = { min: minDate, max: maxDate };
+  renderAll();
 }
 
 let amountsHidden = false;
@@ -647,12 +703,14 @@ function computeLog(log) {
     const otPayUsd = baseRateUsd * US_OT_MULTIPLIER * otHours;
     const benefitPayUsd = benefitRateUsd * benefitHours;
     const totalUsd = regularPayUsd + otPayUsd + benefitPayUsd;
+    // 미국급여는 오늘 환율이 아니라, 그 근무일 당시의 환율로 원화를 계산해요.
+    const fxRate = log.date ? resolveFxRate(log.date) : usdKrwRate;
     return {
       regularPayUsd, otPayUsd, benefitPayUsd, totalUsd,
-      regularPay: regularPayUsd * usdKrwRate,
-      otPay: otPayUsd * usdKrwRate,
-      benefitPay: benefitPayUsd * usdKrwRate,
-      total: totalUsd * usdKrwRate
+      regularPay: regularPayUsd * fxRate,
+      otPay: otPayUsd * fxRate,
+      benefitPay: benefitPayUsd * fxRate,
+      total: totalUsd * fxRate
     };
   }
 
@@ -795,8 +853,14 @@ const FORM_SCOPES = {
   cal: { radioName: 'cal-pay-type', regularLbl: 'cal-regular-lbl', regularInput: 'cal-add-regular', dailyStatusInput: 'cal-daily-status', otLbl: 'cal-ot-lbl', otInput: 'cal-add-ot', otDailySelect: 'cal-add-ot-daily', rateLbl: 'cal-rate-lbl', rateInput: 'cal-add-rate', otMultField: 'cal-ot-multiplier-field', otMultInput: 'cal-add-ot-multiplier' }
 };
 
+// 등록 화면에서 미리 보여주는 원화 환산은, 날짜가 이미 선택돼 있으면(단일 등록)
+// 그 날짜의 환율을, 아니면(여러 날짜 일괄 등록 등) 실시간 환율을 써요.
+function activeFxRate() {
+  return (calModalMode === 'single' && selectedDate) ? resolveFxRate(selectedDate) : usdKrwRate;
+}
+
 function krwThousand(usd) {
-  return Math.round((Number(usd) || 0) * usdKrwRate / 1000) * 1000;
+  return Math.round((Number(usd) || 0) * activeFxRate() / 1000) * 1000;
 }
 
 function linkCurrencyInputs(usdInput, krwInput) {
@@ -809,7 +873,7 @@ function linkCurrencyInputs(usdInput, krwInput) {
   krwInput.addEventListener('input', () => {
     if (krwInput.value === '') { usdInput.value = ''; return; }
     const krw = Number(krwInput.value.replace(/,/g, ''));
-    if (!isNaN(krw)) usdInput.value = (krw / usdKrwRate).toFixed(2);
+    if (!isNaN(krw)) usdInput.value = (krw / activeFxRate()).toFixed(2);
   });
   formatKrwDisplay(krwInput);
 }
@@ -1303,6 +1367,7 @@ function renderCalendar() {
       }
       selectedDate = cell.dataset.date;
       calModalMode = 'single';
+      updateFxHint();
       renderCalendar();
       renderCalDetail();
       openCalModal();
@@ -1629,6 +1694,7 @@ document.getElementById('cal-multiselect-apply').addEventListener('click', () =>
   if (multiSelectedDates.size === 0) { showToast('선택된 날짜가 없어요.', 'error'); return; }
   calModalMode = 'bulk';
   bulkTargetDates = Array.from(multiSelectedDates).sort();
+  updateFxHint();
   renderCalDetail();
   openCalModal();
 });
@@ -1695,6 +1761,7 @@ document.getElementById('cal-add-btn').addEventListener('click', () => {
     editingLogId = null;
     resetCalAddForm();
     scheduleSave();
+    syncHistoricalFxRates();
     renderLogsTable();
     renderWeekLookup();
     renderDashboard();
@@ -1716,6 +1783,7 @@ document.getElementById('cal-add-btn').addEventListener('click', () => {
   resetCalAddForm();
 
   scheduleSave();
+  syncHistoricalFxRates();
   renderLogsTable();
   renderWeekLookup();
   renderDashboard();
@@ -1789,6 +1857,8 @@ document.getElementById('backup-import-input').addEventListener('change', async 
     state.settings = Object.assign({ lastHourlyRate: 0, lastDailyRate: 0, lastOtMultiplier: 1.5, lastUsdDailyRate: 0, lastUsdBenefitRate: 0 }, data.settings || {});
     state.workLogs = data.workLogs;
     scheduleSave();
+    fxHistoryFetchedRange = null; // 복원된 데이터의 날짜 범위가 다를 수 있으니 과거 환율을 다시 받아와요.
+    syncHistoricalFxRates();
     renderAll();
     showToast('백업 파일을 정상적으로 불러왔어요.', 'success');
   } catch (err) {
@@ -1880,6 +1950,8 @@ async function startApp() {
 
   // 환율은 기본값으로 먼저 화면을 그린 뒤, 실시간 값이 오면 다시 그려서 정확한 금액으로 갱신해요.
   fetchUsdKrwRate().then(() => { updateFxHint(); renderAll(); });
+  // 미국급여 항목이 있으면, 그 날짜들의 과거 환율도 받아와서 정확한 원화로 다시 계산해요.
+  syncHistoricalFxRates();
 }
 
 init();
