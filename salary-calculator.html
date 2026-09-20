@@ -1421,13 +1421,57 @@ function renderCalDetail() {
   } else {
     tbody.innerHTML = logs.map(log => {
       const c = computeLog(log);
-      return `<tr${log.id === editingLogId ? ' style="background:var(--accent-tint);"' : ''}>
+      const highlight = log.id === editingLogId ? ' style="background:var(--accent-tint);"' : '';
+      const actions = `<button class="icon-btn" data-cal-edit="${log.id}">수정</button><button class="icon-btn danger" data-cal-del="${log.id}">삭제</button>`;
+
+      // 미국급여(휴무 제외)는 기본급/연장근무/복리후생 계산을 한 줄씩 나눠서 보여줘요.
+      if (logPayType(log) === 'usd_daily' && log.dayStatus !== 'off') {
+        const regularHours = Number(log.regularHours) || 0;
+        const otHours = Number(log.otHours) || 0;
+        const benefitHours = regularHours + otHours;
+        const otRateUsd = (Number(log.dailyRateUsd) || 0) * US_OT_MULTIPLIER;
+        return `
+          <tr${highlight}>
+            <td>${payBadge(log)}</td>
+            <td class="num">${fmtUsd(log.dailyRateUsd)}/h</td>
+            <td class="num">${regularHours}h</td>
+            <td class="num">-</td>
+            <td class="num">${fmtMoney(c.regularPay, c.regularPayUsd)}</td>
+            <td></td>
+          </tr>
+          <tr${highlight}>
+            <td><span class="money-usd">연장근무 (×${US_OT_MULTIPLIER})</span></td>
+            <td class="num">${fmtUsd(otRateUsd)}/h</td>
+            <td class="num">-</td>
+            <td class="num">${otHours}h</td>
+            <td class="num">${fmtMoney(c.otPay, c.otPayUsd)}</td>
+            <td></td>
+          </tr>
+          <tr${highlight}>
+            <td><span class="money-usd">복리후생</span></td>
+            <td class="num">${fmtUsd(log.benefitRateUsd)}/h</td>
+            <td class="num">${benefitHours}h</td>
+            <td class="num">-</td>
+            <td class="num">${fmtMoney(c.benefitPay, c.benefitPayUsd)}</td>
+            <td></td>
+          </tr>
+          <tr${highlight} style="font-weight:700; border-top:1px solid var(--line);">
+            <td>합계</td>
+            <td class="num">-</td>
+            <td class="num">-</td>
+            <td class="num">-</td>
+            <td class="num">${fmtMoney(c.total, c.totalUsd)}</td>
+            <td style="white-space:nowrap;">${actions}</td>
+          </tr>`;
+      }
+
+      return `<tr${highlight}>
         <td>${payBadge(log)}</td>
         <td class="num">${fmtBaseRate(log)}</td>
         <td class="num">${fmtRegular(log)}</td>
         <td class="num">${fmtOt(log)}</td>
         <td class="num">${fmtMoney(c.total, c.totalUsd)}</td>
-        <td style="white-space:nowrap;"><button class="icon-btn" data-cal-edit="${log.id}">수정</button><button class="icon-btn danger" data-cal-del="${log.id}">삭제</button></td>
+        <td style="white-space:nowrap;">${actions}</td>
       </tr>`;
     }).join('');
   }
