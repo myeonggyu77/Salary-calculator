@@ -97,6 +97,8 @@
   tbody td { padding: 10px 8px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
   tbody tr:nth-child(odd) { background: var(--paper); }
   tbody tr:hover { background: var(--accent-tint); }
+  #logs-tbody tr:nth-child(odd) { background: none; }
+  #logs-tbody tr.log-group-start > td { border-top: 2px solid var(--line); }
   .empty-row td { text-align: center; color: var(--ink-faint); padding: 24px; }
   .table-wrap { overflow: auto; max-height: 62vh; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 1px 3px rgba(18,22,43,0.06); }
   .table-wrap table { min-width: 900px; }
@@ -997,7 +999,7 @@ function renderLogsTable() {
       const totalCell = `<td rowspan="3" class="num" style="font-weight:700;">${fmtMoney(c.total, c.totalUsd)}</td>`;
       const actionsCell = `<td rowspan="3" style="white-space:nowrap; vertical-align:top;"><div class="stacked-actions"><button class="icon-btn" data-edit="${log.id}">수정</button><button class="icon-btn danger" data-del="${log.id}">삭제</button></div></td>`;
 
-      rowsHtml.push(`<tr>
+      rowsHtml.push(`<tr class="log-group-start">
         ${idCells}
         <td><span class="money-usd">정기 급여</span></td>
         <td class="num">${fmtUsd(baseRate)}</td>
@@ -1021,7 +1023,7 @@ function renderLogsTable() {
       return;
     }
 
-    rowsHtml.push(`<tr>
+    rowsHtml.push(`<tr class="log-group-start">
       <td><input type="checkbox" class="log-check" data-id="${log.id}"></td>
       <td class="num">${fmtWeekLabel(log.date)}</td>
       <td>${log.date || ''}</td>
