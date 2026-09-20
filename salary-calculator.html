@@ -365,7 +365,7 @@
       <span><span class="dot" style="background:var(--down-soft); box-shadow: inset 0 0 0 1px var(--down);"></span>공휴일/일요일</span>
     </div>
     <div class="cal-legend" style="margin-top:2px;">
-      <span style="color:var(--ink-faint);">미국급여:</span>
+      <span style="color:var(--ink-faint);">정기 급여:</span>
       <span><span class="dot" style="background:#8a94ab;"></span>1~2H</span>
       <span><span class="dot" style="background:#ff9f1c;"></span>3~4H</span>
       <span><span class="dot" style="background:#ef4a5f;"></span>5~6H</span>
@@ -399,7 +399,7 @@
           <div class="radio-row" id="cal-pay-type-row">
             <label><input type="radio" name="cal-pay-type" value="hourly" checked> 시급제</label>
             <label><input type="radio" name="cal-pay-type" value="daily"> 일급제</label>
-            <label><input type="radio" name="cal-pay-type" value="usd_daily"> 미국급여</label>
+            <label><input type="radio" name="cal-pay-type" value="usd_daily"> 정기 급여</label>
           </div>
         </div>
         <div class="form-grid">
@@ -740,7 +740,7 @@ function computeLog(log) {
 function payBadge(log) {
   const payType = logPayType(log);
   if (payType === 'daily') return `<span class="pay-badge daily">일급제</span>`;
-  if (payType === 'usd_daily') return `<span class="pay-badge usd">미국급여</span>`;
+  if (payType === 'usd_daily') return `<span class="pay-badge usd">정기 급여</span>`;
   return `<span class="pay-badge">시급제</span>`;
 }
 
@@ -953,7 +953,7 @@ function renderLogsTable() {
   function flushWeekSubtotal() {
     if (wkHasUsd) {
       rowsHtml.push(`<tr style="background:var(--accent-tint); font-weight:600;">
-        <td></td><td colspan="3">${wkRangeLabel} 미국급여 소계</td>
+        <td></td><td colspan="3">${wkRangeLabel} 정기 급여 소계</td>
         <td></td><td></td>
         <td class="num">-</td>
         <td class="num" style="font-weight:700;">${fmtMoney(wkTotal, wkTotalUsd)}</td>
