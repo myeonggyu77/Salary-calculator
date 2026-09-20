@@ -105,12 +105,8 @@
   .cal-detail-actions .row.highlight { background: var(--accent-tint); border-radius: 4px; }
   .cal-detail-actions .btns { white-space: nowrap; }
   tfoot td { position: sticky; bottom: 0; background: var(--paper-raised); border-top: 2px solid var(--ink); }
-  /* 정규급여/초과수당/복리후생/합계 칸을 옅은 색으로 구분해서 표를 한눈에 훑어보기 쉽게 해요 */
-  td.col-regular { background: rgba(59,91,253,0.08); }
-  td.col-ot { background: rgba(255,180,84,0.10); }
-  td.col-benefit { background: rgba(59,91,253,0.10); }
-  td.col-total { background: rgba(18,22,43,0.05); font-weight: 700; }
-  tbody tr:hover td.col-regular, tbody tr:hover td.col-ot, tbody tr:hover td.col-benefit, tbody tr:hover td.col-total { background: var(--accent-tint); }
+  .stacked-actions { display: flex; flex-direction: column; gap: 4px; }
+  .stacked-actions .icon-btn { margin-left: 0; }
 
   .cal-header { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 14px; }
   .cal-header .cal-title { font-size: 15px; font-weight: 600; min-width: 110px; text-align: center; }
@@ -332,7 +328,7 @@
       <table>
         <thead><tr>
           <th style="width:30px;"><input type="checkbox" id="logs-select-all"></th>
-          <th>주차</th><th>근무일</th><th>구분</th><th class="num">기준금액</th><th class="num">정규</th><th class="num">초과시간</th><th class="num">복리후생시간</th><th class="num">정규급여</th><th class="num">초과수당</th><th class="num">복리후생</th><th class="num">합계</th><th style="width:70px;"></th>
+          <th>주차</th><th>근무일</th><th>구분</th><th class="num">기준금액</th><th class="num">정규</th><th class="num">시간</th><th class="num">금액</th><th class="num">합계</th><th style="width:70px;"></th>
         </tr></thead>
         <tbody id="logs-tbody"></tbody>
         <tfoot id="logs-tfoot"></tfoot>
@@ -756,27 +752,6 @@ function fmtBaseRate(log) {
   return fmtWon(log.rate);
 }
 
-// 급여정산 표의 3줄 기준금액 칸: 기준금액 / 초과근무기준액 / 복리후생기준액
-function fmtBaseRate3Line(log) {
-  const payType = logPayType(log);
-  if (payType === 'usd_daily') {
-    const base = Number(log.dailyRateUsd) || 0;
-    return `${fmtUsd(base)}<br>${fmtUsd(base * US_OT_MULTIPLIER)}<br>${fmtUsd(log.benefitRateUsd || 0)}`;
-  }
-  if (payType === 'daily') {
-    return `${fmtWon(log.rate)}<br>${fmtWon(log.rate)}<br>-`;
-  }
-  const rate = Number(log.rate) || 0;
-  const mult = Number(log.otMultiplier) || 1;
-  return `${fmtWon(rate)}<br>${fmtWon(rate * mult)}<br>-`;
-}
-
-function fmtBenefitHours(log) {
-  if (logPayType(log) !== 'usd_daily') return '-';
-  const n = Number(log.regularHours || 0) + Number(log.otHours || 0);
-  return `${n}h`;
-}
-
 function fmtRegular(log) {
   const payType = logPayType(log);
   if (payType !== 'hourly' && log.dayStatus === 'off') return '휴무';
@@ -961,7 +936,7 @@ function renderLogsTable() {
   document.getElementById('logs-count-hint').textContent = `총 ${sorted.length}건`;
 
   if (sorted.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="13">이 달에 등록된 근무 기록이 없어요.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="10">이 달에 등록된 근무 기록이 없어요.</td></tr>`;
     tfoot.innerHTML = '';
     return;
   }
@@ -979,11 +954,9 @@ function renderLogsTable() {
     if (wkHasUsd) {
       rowsHtml.push(`<tr style="background:var(--accent-tint); font-weight:600;">
         <td></td><td colspan="3">${wkRangeLabel} 미국급여 소계</td>
-        <td></td><td></td><td></td><td></td>
-        <td class="num col-regular">${fmtMoney(wkRegular, wkRegularUsd)}</td>
-        <td class="num col-ot">${fmtMoney(wkOt, wkOtUsd)}</td>
-        <td class="num col-benefit">${fmtMoney(wkBenefit, wkBenefitUsd)}</td>
-        <td class="num col-total">${fmtMoney(wkTotal, wkTotalUsd)}</td>
+        <td></td><td></td><td></td>
+        <td class="num">-</td>
+        <td class="num" style="font-weight:700;">${fmtMoney(wkTotal, wkTotalUsd)}</td>
         <td></td>
       </tr>`);
     }
@@ -1018,9 +991,11 @@ function renderLogsTable() {
       const benefitHours = regularHours + otHours;
       const baseRate = Number(log.dailyRateUsd) || 0;
       const otRateUsd = baseRate * US_OT_MULTIPLIER;
-      const idCells = `<td rowspan="4"><input type="checkbox" class="log-check" data-id="${log.id}"></td>
-      <td rowspan="4" class="num">${fmtWeekLabel(log.date)}</td>
-      <td rowspan="4">${log.date || ''}</td>`;
+      const idCells = `<td rowspan="3"><input type="checkbox" class="log-check" data-id="${log.id}"></td>
+      <td rowspan="3" class="num">${fmtWeekLabel(log.date)}</td>
+      <td rowspan="3">${log.date || ''}</td>`;
+      const totalCell = `<td rowspan="3" class="num" style="font-weight:700;">${fmtMoney(c.total, c.totalUsd)}</td>`;
+      const actionsCell = `<td rowspan="3" style="white-space:nowrap; vertical-align:top;"><div class="stacked-actions"><button class="icon-btn" data-edit="${log.id}">수정</button><button class="icon-btn danger" data-del="${log.id}">삭제</button></div></td>`;
 
       rowsHtml.push(`<tr>
         ${idCells}
@@ -1028,48 +1003,23 @@ function renderLogsTable() {
         <td class="num">${fmtUsd(baseRate)}</td>
         <td class="num">${regularHours}h</td>
         <td class="num">-</td>
-        <td class="num">-</td>
-        <td class="num col-regular">${fmtMoney(c.regularPay, c.regularPayUsd)}</td>
-        <td class="num col-ot">-</td>
-        <td class="num col-benefit">-</td>
-        <td class="num col-total">-</td>
-        <td></td>
+        <td class="num">${fmtMoney(c.regularPay, c.regularPayUsd)}</td>
+        ${totalCell}
+        ${actionsCell}
       </tr>
       <tr>
         <td><span class="money-usd">연장근무 (×${US_OT_MULTIPLIER})</span></td>
         <td class="num">${fmtUsd(otRateUsd)}</td>
         <td class="num">-</td>
         <td class="num">${otHours}h</td>
-        <td class="num">-</td>
-        <td class="num col-regular">-</td>
-        <td class="num col-ot">${fmtMoney(c.otPay, c.otPayUsd)}</td>
-        <td class="num col-benefit">-</td>
-        <td class="num col-total">-</td>
-        <td></td>
+        <td class="num">${fmtMoney(c.otPay, c.otPayUsd)}</td>
       </tr>
       <tr>
         <td><span class="money-usd">복리후생</span></td>
         <td class="num">${fmtUsd(log.benefitRateUsd)}</td>
         <td class="num">-</td>
-        <td class="num">-</td>
         <td class="num">${benefitHours}h</td>
-        <td class="num col-regular">-</td>
-        <td class="num col-ot">-</td>
-        <td class="num col-benefit">${fmtMoney(c.benefitPay, c.benefitPayUsd)}</td>
-        <td class="num col-total">-</td>
-        <td></td>
-      </tr>
-      <tr style="font-weight:700; border-top:1px solid var(--line);">
-        <td>합계</td>
-        <td class="num">-</td>
-        <td class="num">-</td>
-        <td class="num">-</td>
-        <td class="num">-</td>
-        <td class="num col-regular">-</td>
-        <td class="num col-ot">-</td>
-        <td class="num col-benefit">-</td>
-        <td class="num col-total">${fmtMoney(c.total, c.totalUsd)}</td>
-        <td style="white-space:nowrap;"><button class="icon-btn" data-edit="${log.id}">수정</button><button class="icon-btn danger" data-del="${log.id}">삭제</button></td>
+        <td class="num">${fmtMoney(c.benefitPay, c.benefitPayUsd)}</td>
       </tr>`);
       return;
     }
@@ -1079,15 +1029,12 @@ function renderLogsTable() {
       <td class="num">${fmtWeekLabel(log.date)}</td>
       <td>${log.date || ''}</td>
       <td>${payBadge(log)}</td>
-      <td class="num">${fmtBaseRate3Line(log)}</td>
+      <td class="num">${fmtBaseRate(log)}</td>
       <td class="num">${fmtRegular(log)}</td>
       <td class="num">${fmtOt(log)}</td>
-      <td class="num">${fmtBenefitHours(log)}</td>
-      <td class="num col-regular">${fmtMoney(c.regularPay, c.regularPayUsd)}</td>
-      <td class="num col-ot">${fmtMoney(c.otPay, c.otPayUsd)}</td>
-      <td class="num col-benefit">${logPayType(log) === 'usd_daily' ? fmtMoney(c.benefitPay, c.benefitPayUsd) : '-'}</td>
-      <td class="num col-total">${fmtMoney(c.total, c.totalUsd)}</td>
-      <td style="white-space:nowrap;"><button class="icon-btn" data-edit="${log.id}">수정</button><button class="icon-btn danger" data-del="${log.id}">삭제</button></td>
+      <td class="num">-</td>
+      <td class="num" style="font-weight:700;">${fmtMoney(c.total, c.totalUsd)}</td>
+      <td style="white-space:nowrap; vertical-align:top;"><div class="stacked-actions"><button class="icon-btn" data-edit="${log.id}">수정</button><button class="icon-btn danger" data-del="${log.id}">삭제</button></div></td>
     </tr>`);
   });
   flushWeekSubtotal();
@@ -1095,11 +1042,9 @@ function renderLogsTable() {
   tbody.innerHTML = rowsHtml.join('');
 
   tfoot.innerHTML = `<tr style="font-weight:600; border-top: 1px solid var(--ink);">
-    <td colspan="8">합계</td>
-    <td class="num col-regular">${fmtMoney(sumRegular, sumRegularUsd)}</td>
-    <td class="num col-ot">${fmtMoney(sumOt, sumOtUsd)}</td>
-    <td class="num col-benefit">${fmtMoney(sumBenefit, sumBenefitUsd)}</td>
-    <td class="num col-total">${fmtMoney(sumTotal, sumTotalUsd)}</td>
+    <td colspan="7">합계</td>
+    <td class="num">-</td>
+    <td class="num" style="font-weight:700;">${fmtMoney(sumTotal, sumTotalUsd)}</td>
     <td></td>
   </tr>`;
 }
