@@ -100,6 +100,10 @@
   .empty-row td { text-align: center; color: var(--ink-faint); padding: 24px; }
   .table-wrap { overflow: auto; max-height: 62vh; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 1px 3px rgba(18,22,43,0.06); }
   .table-wrap table { min-width: 900px; }
+  .cal-detail-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .cal-detail-actions .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 2px; }
+  .cal-detail-actions .row.highlight { background: var(--accent-tint); border-radius: 4px; }
+  .cal-detail-actions .btns { white-space: nowrap; }
   tfoot td { position: sticky; bottom: 0; background: var(--paper-raised); border-top: 2px solid var(--ink); }
   /* 정규급여/초과수당/복리후생/합계 칸을 옅은 색으로 구분해서 표를 한눈에 훑어보기 쉽게 해요 */
   td.col-regular { background: rgba(59,91,253,0.08); }
@@ -242,7 +246,8 @@
     #cal-modal-overlay .modal-card { width: 100%; max-width: none; max-height: none; box-shadow: 0 1px 3px rgba(18,22,43,0.06); border: 1px solid var(--line); }
     #cal-detail-table-wrap table { min-width: 0; font-size: 13px; }
     #cal-detail-table-wrap thead th { padding: 8px; font-size: 11px; }
-    #cal-detail-table-wrap tbody td { padding: 10px 8px; }
+    #cal-detail-table-wrap tbody td { padding: 10px 8px; white-space: normal; }
+    #cal-detail-table-wrap td.num { word-break: keep-all; }
 
     /* 급여현황: 그래프 카드도 세로 공간을 화면 높이에 맞춰 꽉 채워요. */
     #panel-dashboard.active { display: flex; flex-direction: column; min-height: calc(100vh - 260px); }
@@ -386,12 +391,13 @@
           <h3 id="cal-detail-title">날짜를 선택해 주세요</h3>
           <button class="icon-btn" id="cal-modal-close">✕</button>
         </div>
-        <div class="table-wrap" id="cal-detail-table-wrap" style="margin-bottom:12px;">
+        <div class="table-wrap" id="cal-detail-table-wrap" style="margin-bottom:8px;">
           <table>
-            <thead><tr><th>구분</th><th class="num">기준금액</th><th class="num">정규</th><th class="num">연장시간</th><th class="num">합계</th><th style="width:40px;"></th></tr></thead>
-            <tbody id="cal-detail-tbody"><tr class="empty-row"><td colspan="6">달력에서 날짜를 선택하면 여기에 표시돼요.</td></tr></tbody>
+            <thead><tr><th>구분</th><th class="num">기준금액</th><th class="num">정규</th><th class="num">연장시간</th><th class="num">합계</th></tr></thead>
+            <tbody id="cal-detail-tbody"><tr class="empty-row"><td colspan="5">달력에서 날짜를 선택하면 여기에 표시돼요.</td></tr></tbody>
           </table>
         </div>
+        <div class="cal-detail-actions" id="cal-detail-actions" style="margin-bottom:12px;"></div>
         <div class="field">
           <div class="field-lbl">급여 방식</div>
           <div class="radio-row" id="cal-pay-type-row">
@@ -1390,11 +1396,13 @@ function renderCalDetail() {
   const titleEl = document.getElementById('cal-detail-title');
   const tbody = document.getElementById('cal-detail-tbody');
   const tableWrap = document.getElementById('cal-detail-table-wrap');
+  const actionsEl = document.getElementById('cal-detail-actions');
   const addBtn = document.getElementById('cal-add-btn');
 
   if (calModalMode === 'bulk') {
     titleEl.textContent = `선택한 ${bulkTargetDates.length}개 날짜에 등록`;
     tableWrap.style.display = 'none';
+    actionsEl.innerHTML = '';
     addBtn.disabled = bulkTargetDates.length === 0;
     addBtn.textContent = `${bulkTargetDates.length}개 날짜에 등록`;
     return;
@@ -1404,7 +1412,8 @@ function renderCalDetail() {
 
   if (!selectedDate) {
     titleEl.textContent = '날짜를 선택해 주세요';
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">달력에서 날짜를 선택하면 여기에 표시돼요.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">달력에서 날짜를 선택하면 여기에 표시돼요.</td></tr>`;
+    actionsEl.innerHTML = '';
     addBtn.disabled = true;
     return;
   }
@@ -1417,12 +1426,12 @@ function renderCalDetail() {
 
   const logs = state.workLogs.filter(l => l.date === selectedDate);
   if (logs.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">등록된 근무 기록이 없어요.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">등록된 근무 기록이 없어요.</td></tr>`;
+    actionsEl.innerHTML = '';
   } else {
     tbody.innerHTML = logs.map(log => {
       const c = computeLog(log);
       const highlight = log.id === editingLogId ? ' style="background:var(--accent-tint);"' : '';
-      const actions = `<button class="icon-btn" data-cal-edit="${log.id}">수정</button><button class="icon-btn danger" data-cal-del="${log.id}">삭제</button>`;
 
       // 미국급여(휴무 제외)는 기본급/연장근무/복리후생 계산을 한 줄씩 나눠서 보여줘요.
       if (logPayType(log) === 'usd_daily' && log.dayStatus !== 'off') {
@@ -1437,7 +1446,6 @@ function renderCalDetail() {
             <td class="num">${regularHours}h</td>
             <td class="num">-</td>
             <td class="num">${fmtMoney(c.regularPay, c.regularPayUsd)}</td>
-            <td></td>
           </tr>
           <tr${highlight}>
             <td><span class="money-usd">연장근무 (×${US_OT_MULTIPLIER})</span></td>
@@ -1445,7 +1453,6 @@ function renderCalDetail() {
             <td class="num">-</td>
             <td class="num">${otHours}h</td>
             <td class="num">${fmtMoney(c.otPay, c.otPayUsd)}</td>
-            <td></td>
           </tr>
           <tr${highlight}>
             <td><span class="money-usd">복리후생</span></td>
@@ -1453,7 +1460,6 @@ function renderCalDetail() {
             <td class="num">${benefitHours}h</td>
             <td class="num">-</td>
             <td class="num">${fmtMoney(c.benefitPay, c.benefitPayUsd)}</td>
-            <td></td>
           </tr>
           <tr${highlight} style="font-weight:700; border-top:1px solid var(--line);">
             <td>합계</td>
@@ -1461,7 +1467,6 @@ function renderCalDetail() {
             <td class="num">-</td>
             <td class="num">-</td>
             <td class="num">${fmtMoney(c.total, c.totalUsd)}</td>
-            <td style="white-space:nowrap;">${actions}</td>
           </tr>`;
       }
 
@@ -1471,8 +1476,16 @@ function renderCalDetail() {
         <td class="num">${fmtRegular(log)}</td>
         <td class="num">${fmtOt(log)}</td>
         <td class="num">${fmtMoney(c.total, c.totalUsd)}</td>
-        <td style="white-space:nowrap;">${actions}</td>
       </tr>`;
+    }).join('');
+
+    actionsEl.innerHTML = logs.map(log => {
+      const rowHighlight = log.id === editingLogId ? ' highlight' : '';
+      return `
+        <div class="row${rowHighlight}">
+          <span>${payBadge(log)}</span>
+          <span class="btns"><button class="icon-btn" data-cal-edit="${log.id}">수정</button><button class="icon-btn danger" data-cal-del="${log.id}">삭제</button></span>
+        </div>`;
     }).join('');
   }
 }
@@ -1845,7 +1858,7 @@ document.getElementById('cal-add-btn').addEventListener('click', () => {
   }
 });
 
-document.getElementById('cal-detail-tbody').addEventListener('click', (e) => {
+document.getElementById('cal-detail-actions').addEventListener('click', (e) => {
   const editId = e.target.dataset.calEdit;
   if (editId) {
     const log = state.workLogs.find(l => l.id === editId);
