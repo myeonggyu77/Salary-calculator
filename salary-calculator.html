@@ -1049,7 +1049,10 @@ function renderLogsTable() {
         <td><span class="money-usd">복리후생</span></td>
         <td class="num">${fmtUsd(log.benefitRateUsd)}</td>
         <td class="num">${benefitHours}h</td>
-        <td class="num">${fmtTimeRange(log.workStart, (log.otEnd !== '' && log.otEnd != null) ? log.otEnd : log.workEnd)}</td>
+        <td class="num">${fmtTimeRange(
+          (log.workStart !== '' && log.workStart != null) ? log.workStart : log.otStart,
+          (log.otEnd !== '' && log.otEnd != null) ? log.otEnd : log.workEnd
+        )}</td>
         <td class="num">${fmtMoney(c.benefitPay, c.benefitPayUsd)}</td>
       </tr>`);
       return;
