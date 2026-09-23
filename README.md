@@ -13,13 +13,13 @@
 
 ## Supabase 백엔드
 
-이 앱은 **포트폴리오 원장(`portfolio-tracker`)과 같은 Supabase 프로젝트**를 함께 사용해요. 새 프로젝트를 따로 만들지 않고, 같은 프로젝트 안에 `salary_data`라는 새 테이블만 추가해서 데이터가 서로 섞이지 않게 분리했어요.
+(2026-09 변경) 이 앱은 **독립된 전용 Supabase 프로젝트**(`salary-calculator`)를 써요. 예전엔 포트폴리오 원장과 같은 프로젝트를 공유했지만, 관리 편의를 위해 분리했어요.
 
-`salary-calculator.html` 상단의 `BACKEND CONFIG`에 이미 값이 채워져 있어서 별도 설정 없이 바로 로그인해서 쓸 수 있어요. **로그인 계정도 포트폴리오 원장과 동일한 이메일/비밀번호**를 그대로 쓰면 돼요 (Supabase Auth는 프로젝트 단위라서 같은 계정을 공유해요).
+`salary-calculator.html` 상단의 `BACKEND CONFIG`에 이미 이 전용 프로젝트 값이 채워져 있어서 별도 설정 없이 바로 쓸 수 있어요. 다만 **로그인 계정은 포트폴리오 원장과 별개**예요 — 이 프로젝트에 새로 회원가입(이메일/비밀번호)해서 로그인해주세요.
 
 ### 최초 1회 — 테이블 생성
 
-Supabase 대시보드 → **SQL Editor** → 이 저장소의 `setup.sql` 내용을 붙여넣고 **Run**을 눌러 `salary_data` 테이블을 만들어 주세요. (기존 `portfolio_data` 테이블에는 영향 없어요.)
+이미 완료돼 있어요(`salary_data` 테이블 + 본인 데이터만 보이는 보안 규칙까지 적용됨). 혹시 새 Supabase 프로젝트로 다시 옮기게 되면, Supabase 대시보드 → **SQL Editor** → 이 저장소의 `setup.sql` 내용을 붙여넣고 **Run**을 눌러 테이블을 만들어 주세요.
 
 ### GitHub Pages로 배포하기
 
