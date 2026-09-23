@@ -91,7 +91,7 @@
   .radio-row label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
   .radio-row input[type="radio"] { width: auto; height: auto; }
   .time-range-row { display: flex; align-items: center; gap: 6px; }
-  .time-range-row input[type="time"] { flex: 1 1 0; min-width: 0; }
+  .time-range-row select { flex: 1 1 0; min-width: 0; }
   .time-range-sep { color: var(--ink-faint); flex: 0 0 auto; }
   .checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); cursor: pointer; margin-top: 8px; }
   .checkbox-row input[type="checkbox"] { width: auto; height: auto; }
@@ -433,9 +433,9 @@
             </select>
             <div id="cal-usd-work-time-fields" style="display:none;">
               <div class="time-range-row">
-                <input type="time" id="cal-usd-work-start">
+                <select id="cal-usd-work-start"></select>
                 <span class="time-range-sep">~</span>
-                <input type="time" id="cal-usd-work-end">
+                <select id="cal-usd-work-end"></select>
               </div>
               <label class="checkbox-row"><input type="checkbox" id="cal-usd-work-off"> 휴무</label>
             </div>
@@ -452,9 +452,9 @@
             </datalist>
             <div id="cal-usd-ot-time-fields" style="display:none;">
               <div class="time-range-row">
-                <input type="time" id="cal-usd-ot-start">
+                <select id="cal-usd-ot-start"></select>
                 <span class="time-range-sep">~</span>
-                <input type="time" id="cal-usd-ot-end">
+                <select id="cal-usd-ot-end"></select>
               </div>
             </div>
           </div>
@@ -846,13 +846,11 @@ const FORM_SCOPES = {
 // 급여 항목의 근무시간을 시작~종료(24시간제) 시각으로 입력받아 시간(h)으로 환산해요.
 // 종료시간이 시작시간보다 이르면 다음날 새벽까지 이어지는 야간근무로 보고 24시간을 더해요.
 function timeRangeHours(start, end) {
-  if (!start || !end) return 0;
-  const [sh, sm] = start.split(':').map(Number);
-  const [eh, em] = end.split(':').map(Number);
-  const startMin = sh * 60 + sm;
-  let endMin = eh * 60 + em;
-  if (endMin < startMin) endMin += 24 * 60;
-  return (endMin - startMin) / 60;
+  if (start === '' || start == null || end === '' || end == null) return 0;
+  const startHour = Number(start);
+  let endHour = Number(end);
+  if (endHour < startHour) endHour += 24;
+  return endHour - startHour;
 }
 
 // 근무시간이 5시간을 초과하면 휴게시간 1시간을 공제해요(초과근무시간에는 적용 안 함).
@@ -1589,6 +1587,16 @@ document.getElementById('cal-pay-type-row').addEventListener('change', () => upd
 
 linkCurrencyInputs(document.getElementById('cal-usd-daily-usd'), document.getElementById('cal-usd-daily-krw'));
 linkCurrencyInputs(document.getElementById('cal-usd-benefit-usd'), document.getElementById('cal-usd-benefit-krw'));
+
+// 근무시간/초과근무시간 시작~종료는 분 없이 시(0~23시, 24시간제) 단위로만 선택해요.
+function hourSelectOptionsHtml() {
+  let html = '<option value="">--</option>';
+  for (let h = 0; h < 24; h++) html += `<option value="${h}">${h}시</option>`;
+  return html;
+}
+['cal-usd-work-start', 'cal-usd-work-end', 'cal-usd-ot-start', 'cal-usd-ot-end'].forEach(id => {
+  document.getElementById(id).innerHTML = hourSelectOptionsHtml();
+});
 
 document.getElementById('cal-usd-work-off').addEventListener('change', (e) => {
   document.getElementById('cal-usd-work-start').disabled = e.target.checked;
