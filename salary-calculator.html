@@ -396,8 +396,8 @@
         </div>
         <div class="table-wrap" id="cal-detail-table-wrap" style="margin-bottom:8px;">
           <table>
-            <thead><tr><th>구분</th><th class="num">기준금액</th><th class="num">정규</th><th class="num">연장시간</th><th class="num">합계</th></tr></thead>
-            <tbody id="cal-detail-tbody"><tr class="empty-row"><td colspan="5">달력에서 날짜를 선택하면 여기에 표시돼요.</td></tr></tbody>
+            <thead><tr><th>구분</th><th class="num">기준금액</th><th class="num">시간</th><th class="num">합계</th></tr></thead>
+            <tbody id="cal-detail-tbody"><tr class="empty-row"><td colspan="4">달력에서 날짜를 선택하면 여기에 표시돼요.</td></tr></tbody>
           </table>
         </div>
         <div class="cal-detail-actions" id="cal-detail-actions" style="margin-bottom:12px;"></div>
@@ -1455,7 +1455,7 @@ function renderCalDetail() {
 
   if (!selectedDate) {
     titleEl.textContent = '날짜를 선택해 주세요';
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">달력에서 날짜를 선택하면 여기에 표시돼요.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="4">달력에서 날짜를 선택하면 여기에 표시돼요.</td></tr>`;
     actionsEl.innerHTML = '';
     addBtn.disabled = true;
     return;
@@ -1469,7 +1469,7 @@ function renderCalDetail() {
 
   const logs = state.workLogs.filter(l => l.date === selectedDate);
   if (logs.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="5">등록된 근무 기록이 없어요.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="4">등록된 근무 기록이 없어요.</td></tr>`;
     actionsEl.innerHTML = '';
   } else {
     tbody.innerHTML = logs.map(log => {
@@ -1487,13 +1487,11 @@ function renderCalDetail() {
             <td><span class="money-usd">급여</span></td>
             <td class="num">${fmtUsd(log.dailyRateUsd)}/h</td>
             <td class="num">${regularHours}h</td>
-            <td class="num">-</td>
             <td class="num">${fmtMoney(c.regularPay, c.regularPayUsd)}</td>
           </tr>
           <tr${highlight}>
             <td><span class="money-usd">연장근무 (×${US_OT_MULTIPLIER})</span></td>
             <td class="num">${fmtUsd(otRateUsd)}/h</td>
-            <td class="num">-</td>
             <td class="num">${otHours}h</td>
             <td class="num">${fmtMoney(c.otPay, c.otPayUsd)}</td>
           </tr>
@@ -1501,12 +1499,10 @@ function renderCalDetail() {
             <td><span class="money-usd">복리후생</span></td>
             <td class="num">${fmtUsd(log.benefitRateUsd)}/h</td>
             <td class="num">${benefitHours}h</td>
-            <td class="num">-</td>
             <td class="num">${fmtMoney(c.benefitPay, c.benefitPayUsd)}</td>
           </tr>
           <tr${highlight} style="font-weight:700; border-top:1px solid var(--line);">
             <td>합계</td>
-            <td class="num">-</td>
             <td class="num">-</td>
             <td class="num">-</td>
             <td class="num">${fmtMoney(c.total, c.totalUsd)}</td>
@@ -1516,8 +1512,7 @@ function renderCalDetail() {
       return `<tr${highlight}>
         <td>${payBadge(log)}</td>
         <td class="num">${fmtBaseRate(log)}</td>
-        <td class="num">${fmtRegular(log)}</td>
-        <td class="num">${fmtOt(log)}</td>
+        <td class="num">${fmtRegular(log)}<br>${fmtOt(log)}</td>
         <td class="num">${fmtMoney(c.total, c.totalUsd)}</td>
       </tr>`;
     }).join('');
