@@ -1262,6 +1262,68 @@ function renderDashboard() {
 
 // ---------- 급여명세서 ----------
 let payslipWeekDate = new Date();
+// 아이폰(iOS Safari)에서 navigator.share()는 클릭 직후 아주 짧은 시간(사용자 동작 유효시간) 안에만
+// 정상 동작해요. html2canvas로 이미지를 만드는 동안 그 시간이 지나버리면 공유창이 안 뜨고 아무
+// 반응도 없는 것처럼 보여요. 그래서 명세서가 그려질 때마다 미리 이미지를 만들어 캐시해두고,
+// 버튼을 누르면 그 캐시로 곧바로 공유를 시도해서 지연을 최소화해요.
+let payslipImageBlob = null;
+let payslipImageBlobWeekKey = null;
+let payslipImageGenToken = 0;
+
+async function regeneratePayslipImage(weekKeyStr) {
+  if (typeof html2canvas === 'undefined') return;
+  const myToken = ++payslipImageGenToken;
+  try {
+    const target = document.getElementById('payslip-print-view');
+    const canvas = await html2canvas(target, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+    if (myToken === payslipImageGenToken) {
+      payslipImageBlob = blob;
+      payslipImageBlobWeekKey = weekKeyStr;
+    }
+  } catch (e) {
+    // 미리 만들기는 조용히 실패해도 괜찮아요 — 버튼을 누를 때 다시 시도해요.
+  }
+}
+
+function downloadBlob(blob, fileName) {
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+}
+
+function openImageInNewTab(blob) {
+  const blobUrl = URL.createObjectURL(blob);
+  const w = window.open(blobUrl, '_blank');
+  if (w) {
+    showToast('이미지를 새 탭에 열었어요. 이미지를 길게 눌러 저장해 주세요.', 'success');
+  } else {
+    showToast('이미지 생성에는 성공했지만 새 탭을 열지 못했어요. 팝업 차단을 확인해 주세요.', 'error');
+  }
+}
+
+// 공유 시트(아이폰 등)를 지원하면 그걸로, 아니면 바로 다운로드해요.
+// 공유가 실패하면(사용자 동작 유효시간 만료 등) <a download>는 iOS에서 거의 항상 무시되니
+// 대신 새 탭에 열어서 길게 눌러 저장하게 안내해요.
+async function shareOrDownloadBlob(blob, fileName) {
+  const file = new File([blob], fileName, { type: 'image/jpeg' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file] });
+      return;
+    } catch (shareErr) {
+      if (shareErr && shareErr.name === 'AbortError') return; // 사용자가 공유창을 취소함
+      openImageInNewTab(blob);
+      return;
+    }
+  }
+  downloadBlob(blob, fileName);
+}
 
 function renderPayslip() {
   const ds = dateStr(payslipWeekDate.getFullYear(), payslipWeekDate.getMonth(), payslipWeekDate.getDate());
@@ -1368,6 +1430,11 @@ function renderPayslip() {
     </table>
     <div class="pp-net">수령액 ${fmtMoney(netKrw, netUsd)}</div>
   `;
+
+  // 급여명세서 탭을 보고 있을 때만 미리 이미지를 만들어둬요(다른 탭에서는 불필요한 작업이라 생략).
+  if (document.getElementById('panel-payslip').classList.contains('active')) {
+    regeneratePayslipImage(weekStartStr);
+  }
 }
 
 function updatePayslipAdjustment(field, value) {
@@ -1403,56 +1470,33 @@ document.getElementById('payslip-print-btn').addEventListener('click', () => {
 document.getElementById('payslip-jpg-btn').addEventListener('click', async (e) => {
   const btn = e.currentTarget;
   const originalText = btn.textContent;
+
+  const ds = dateStr(payslipWeekDate.getFullYear(), payslipWeekDate.getMonth(), payslipWeekDate.getDate());
+  const { weekStart } = getWeekContaining(ds);
+  const weekKeyStr = dateStr(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+  const weekTitle = document.getElementById('payslip-week-title').textContent.replace('급여명세서', '').trim();
+  const fileName = `급여명세서_${weekTitle}.jpg`;
+
+  // 미리 만들어둔 이미지가 있으면(정상적인 경우 항상 있어요) 클릭 즉시 공유를 시도해서
+  // 아이폰의 사용자 동작 유효시간이 끝나기 전에 공유창이 뜨게 해요.
+  if (payslipImageBlobWeekKey === weekKeyStr && payslipImageBlob) {
+    await shareOrDownloadBlob(payslipImageBlob, fileName);
+    return;
+  }
+
+  // 아직 준비가 안 됐을 때만(탭을 열자마자 바로 눌렀거나 생성이 느릴 때) 지금 새로 만들어요.
   btn.disabled = true;
   btn.textContent = '이미지 생성 중...';
   try {
     renderPayslip();
     const target = document.getElementById('payslip-print-view');
     const canvas = await html2canvas(target, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-    const weekTitle = document.getElementById('payslip-week-title').textContent.replace('급여명세서', '').trim();
-    const fileName = `급여명세서_${weekTitle}.jpg`;
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
     if (!blob) throw new Error('이미지 변환에 실패했어요.');
-
-    // 아이폰(iOS Safari)은 <a download>로 데이터URL을 저장하는 게 거의 항상 무시돼서
-    // 아무 반응이 없는 것처럼 보여요. 대신 공유 시트를 띄워서 '사진에 저장'을 쓰게 해요.
-    const file = new File([blob], fileName, { type: 'image/jpeg' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file] });
-        return;
-      } catch (shareErr) {
-        if (shareErr && shareErr.name === 'AbortError') return; // 사용자가 공유창을 취소함
-        // 공유가 막힌 경우(권한 등)엔 아래 데스크톱 방식으로 넘어가요.
-      }
-    }
-
-    // 데스크톱 등 <a download>가 실제로 동작하는 브라우저용 기본 저장 방식.
-    const blobUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    await shareOrDownloadBlob(blob, fileName);
   } catch (err) {
     console.error(err);
-    // 위 방법이 전부 안 될 때의 마지막 수단: 새 탭에 이미지를 열어서 길게 눌러 저장하게 안내해요.
-    try {
-      const target = document.getElementById('payslip-print-view');
-      const canvas = await html2canvas(target, { scale: 2, backgroundColor: '#ffffff' });
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-      const w = window.open();
-      if (w) {
-        w.document.write(`<title>급여명세서</title><body style="margin:0;background:#111;"><img src="${dataUrl}" style="width:100%;"></body>`);
-        showToast('이미지를 새 탭에 열었어요. 이미지를 길게 눌러 저장해 주세요.', 'success');
-      } else {
-        showToast('이미지 생성에 실패했어요: ' + err.message, 'error');
-      }
-    } catch (err2) {
-      showToast('이미지 생성에 실패했어요: ' + err2.message, 'error');
-    }
+    showToast('이미지 생성에 실패했어요: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
     btn.textContent = originalText;
@@ -1862,6 +1906,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     tab.classList.add('active');
     document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
     updateKpiRowVisibility(tab.dataset.tab);
+    if (tab.dataset.tab === 'payslip') renderPayslip();
     closeCalModal();
   });
 });
