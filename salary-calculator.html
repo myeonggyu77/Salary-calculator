@@ -521,7 +521,8 @@
       <button class="icon-btn" id="payslip-next-btn">▶</button>
     </div>
 
-    <div class="form-note" id="payslip-pay-date" style="text-align:center; margin-bottom:16px;"></div>
+    <div class="form-note" id="payslip-pay-date" style="text-align:center; margin-bottom:4px;"></div>
+    <div class="form-note" id="payslip-fx-rate" style="text-align:center; margin-bottom:16px;"></div>
 
     <div style="display:flex; gap:8px; justify-content:center; margin-bottom:16px;">
       <button class="ghost-btn" id="payslip-print-btn">인쇄 (PDF·프린터)</button>
@@ -731,6 +732,18 @@ function fmtUsdChart(n) {
 function fmtMoney(krw, usd) {
   if (amountsHidden) return fmtWon(krw);
   return `${fmtWon(krw)} <span class="money-usd">(${fmtUsd(usd)})</span>`;
+}
+
+// 급여명세서는 세금·렌탈료처럼 소수점 있는 금액이 많아서, 달러를 반올림하지 않고
+// 소수점 2자리까지 그대로 보여줘요(다른 탭은 기존처럼 정수로 표시).
+function fmtUsd2(n) {
+  if (amountsHidden) return '$＊＊';
+  return '$' + (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtMoney2(krw, usd) {
+  if (amountsHidden) return fmtWon(krw);
+  return `${fmtWon(krw)} <span class="money-usd">(${fmtUsd2(usd)})</span>`;
 }
 
 // 급여현황 그래프 막대 위에 쓰는 표기: 원화는 만원 단위(소수점 없음)로,
@@ -1367,12 +1380,12 @@ function renderPayslip() {
   const avgBenefitRate = benefitHoursSum > 0 ? benefitPayUsd / benefitHoursSum : 0;
 
   document.getElementById('payslip-earnings-tbody').innerHTML = `
-    <tr><td>정규근무</td><td class="num">${regularHoursSum}h</td><td class="num">${fmtUsd(avgRegularRate)}/h</td><td class="num">${fmtMoney(regularPay, regularPayUsd)}</td></tr>
-    <tr><td>연장근무 (×${US_OT_MULTIPLIER})</td><td class="num">${otHoursSum}h</td><td class="num">${fmtUsd(avgOtRate)}/h</td><td class="num">${fmtMoney(otPay, otPayUsd)}</td></tr>
-    <tr><td>복리후생</td><td class="num">${benefitHoursSum}h</td><td class="num">${fmtUsd(avgBenefitRate)}/h</td><td class="num">${fmtMoney(benefitPay, benefitPayUsd)}</td></tr>
+    <tr><td>정규근무</td><td class="num">${regularHoursSum}h</td><td class="num">${fmtUsd2(avgRegularRate)}/h</td><td class="num">${fmtMoney2(regularPay, regularPayUsd)}</td></tr>
+    <tr><td>연장근무 (×${US_OT_MULTIPLIER})</td><td class="num">${otHoursSum}h</td><td class="num">${fmtUsd2(avgOtRate)}/h</td><td class="num">${fmtMoney2(otPay, otPayUsd)}</td></tr>
+    <tr><td>복리후생</td><td class="num">${benefitHoursSum}h</td><td class="num">${fmtUsd2(avgBenefitRate)}/h</td><td class="num">${fmtMoney2(benefitPay, benefitPayUsd)}</td></tr>
   `;
   document.getElementById('payslip-earnings-tfoot').innerHTML = `
-    <tr style="font-weight:700; border-top:1px solid var(--ink);"><td colspan="3">정산내역 합계</td><td class="num">${fmtMoney(total, totalUsd)}</td></tr>
+    <tr style="font-weight:700; border-top:1px solid var(--ink);"><td colspan="3">정산내역 합계</td><td class="num">${fmtMoney2(total, totalUsd)}</td></tr>
   `;
 
   if (!state.settings.payslipAdjustments) state.settings.payslipAdjustments = {};
@@ -1383,6 +1396,8 @@ function renderPayslip() {
 
   // 공제금(세금·렌탈료·기타)은 USD로 입력받고, 근무주 마지막 날의 환율로 원화 환산해요.
   const fxRate = resolveFxRate(weekEndStr);
+  const fxRateText = `적용 환율: $1 = ₩${fxRate.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${weekEnd.getMonth() + 1}/${weekEnd.getDate()} 기준)`;
+  document.getElementById('payslip-fx-rate').textContent = fxRateText;
   const taxUsd = totalUsd * (Number(adj.taxRate) || 0) / 100;
   const rentalUsd = Number(adj.rentalFee) || 0;
   const otherItemsUsd = adj.otherDeductions.reduce((s, it) => s + (Number(it.amountUsd) || 0), 0);
@@ -1394,51 +1409,52 @@ function renderPayslip() {
   const otherItemRowsHtml = (delBtn) => adj.otherDeductions.map(it => {
     const amtUsd = Number(it.amountUsd) || 0;
     const amtKrw = amtUsd * fxRate;
-    return `<tr><td>${escapeHtml(it.label || '공제금')}</td><td class="num">${fmtMoney(amtKrw, amtUsd)}</td>${delBtn ? `<td><button class="icon-btn danger" data-del-deduction-item="${it.id}">삭제</button></td>` : ''}</tr>`;
+    return `<tr><td>${escapeHtml(it.label || '공제금')}</td><td class="num">${fmtMoney2(amtKrw, amtUsd)}</td>${delBtn ? `<td><button class="icon-btn danger" data-del-deduction-item="${it.id}">삭제</button></td>` : ''}</tr>`;
   }).join('');
 
   document.getElementById('payslip-deduction-tbody').innerHTML = `
-    <tr><td>원천징수 (연방소득세 ${adj.taxRate}%)</td><td class="num">${fmtMoney(taxKrw, taxUsd)}</td><td></td></tr>
-    <tr><td>주간렌탈료</td><td class="num">${fmtMoney(rentalKrw, rentalUsd)}</td><td></td></tr>
+    <tr><td>원천징수 (연방소득세 ${adj.taxRate}%)</td><td class="num">${fmtMoney2(taxKrw, taxUsd)}</td><td></td></tr>
+    <tr><td>주간렌탈료</td><td class="num">${fmtMoney2(rentalKrw, rentalUsd)}</td><td></td></tr>
     ${otherItemRowsHtml(true)}
   `;
   document.getElementById('payslip-deduction-tfoot').innerHTML = `
-    <tr style="font-weight:700; border-top:1px solid var(--ink);"><td>공제금 합계</td><td class="num">${fmtMoney(deductionTotalKrw, deductionTotalUsd)}</td><td></td></tr>
+    <tr style="font-weight:700; border-top:1px solid var(--ink);"><td>공제금 합계</td><td class="num">${fmtMoney2(deductionTotalKrw, deductionTotalUsd)}</td><td></td></tr>
   `;
 
   const netUsd = totalUsd - deductionTotalUsd;
   const netKrw = total - deductionTotalKrw;
 
-  document.getElementById('payslip-gross').innerHTML = fmtMoney(total, totalUsd);
-  document.getElementById('payslip-deduction-total').innerHTML = fmtMoney(deductionTotalKrw, deductionTotalUsd);
-  document.getElementById('payslip-net').innerHTML = fmtMoney(netKrw, netUsd);
+  document.getElementById('payslip-gross').innerHTML = fmtMoney2(total, totalUsd);
+  document.getElementById('payslip-deduction-total').innerHTML = fmtMoney2(deductionTotalKrw, deductionTotalUsd);
+  document.getElementById('payslip-net').innerHTML = fmtMoney2(netKrw, netUsd);
 
   // 인쇄/이미지 저장용으로, 입력칸 없이 깔끔한 문서 형태로 똑같은 내용을 한 번 더 그려둬요.
   document.getElementById('payslip-print-view').innerHTML = `
     <h2>급여명세서</h2>
     <div class="pp-sub">${pad2(wn)}주차 (${fmtWeekRange(weekStart, weekEnd)})</div>
     <div class="pp-paydate">급여 수령일: ${payDateStr} (${dowNames[payDate.getDay()]})</div>
+    <div class="pp-sub">${fxRateText}</div>
     <h3>주간 정산내역</h3>
     <table>
       <thead><tr><th>구분</th><th class="num">시간</th><th class="num">기준액</th><th class="num">금액</th></tr></thead>
       <tbody>
-        <tr><td>정규근무</td><td class="num">${regularHoursSum}h</td><td class="num">${fmtUsd(avgRegularRate)}/h</td><td class="num">${fmtMoney(regularPay, regularPayUsd)}</td></tr>
-        <tr><td>연장근무 (×${US_OT_MULTIPLIER})</td><td class="num">${otHoursSum}h</td><td class="num">${fmtUsd(avgOtRate)}/h</td><td class="num">${fmtMoney(otPay, otPayUsd)}</td></tr>
-        <tr><td>복리후생</td><td class="num">${benefitHoursSum}h</td><td class="num">${fmtUsd(avgBenefitRate)}/h</td><td class="num">${fmtMoney(benefitPay, benefitPayUsd)}</td></tr>
+        <tr><td>정규근무</td><td class="num">${regularHoursSum}h</td><td class="num">${fmtUsd2(avgRegularRate)}/h</td><td class="num">${fmtMoney2(regularPay, regularPayUsd)}</td></tr>
+        <tr><td>연장근무 (×${US_OT_MULTIPLIER})</td><td class="num">${otHoursSum}h</td><td class="num">${fmtUsd2(avgOtRate)}/h</td><td class="num">${fmtMoney2(otPay, otPayUsd)}</td></tr>
+        <tr><td>복리후생</td><td class="num">${benefitHoursSum}h</td><td class="num">${fmtUsd2(avgBenefitRate)}/h</td><td class="num">${fmtMoney2(benefitPay, benefitPayUsd)}</td></tr>
       </tbody>
-      <tfoot><tr><td colspan="3">정산내역 합계</td><td class="num">${fmtMoney(total, totalUsd)}</td></tr></tfoot>
+      <tfoot><tr><td colspan="3">정산내역 합계</td><td class="num">${fmtMoney2(total, totalUsd)}</td></tr></tfoot>
     </table>
     <h3>공제금</h3>
     <table>
       <thead><tr><th>공제 항목</th><th class="num">금액</th></tr></thead>
       <tbody>
-        <tr><td>원천징수 (연방소득세 ${adj.taxRate}%)</td><td class="num">${fmtMoney(taxKrw, taxUsd)}</td></tr>
-        <tr><td>주간렌탈료</td><td class="num">${fmtMoney(rentalKrw, rentalUsd)}</td></tr>
+        <tr><td>원천징수 (연방소득세 ${adj.taxRate}%)</td><td class="num">${fmtMoney2(taxKrw, taxUsd)}</td></tr>
+        <tr><td>주간렌탈료</td><td class="num">${fmtMoney2(rentalKrw, rentalUsd)}</td></tr>
         ${otherItemRowsHtml(false)}
       </tbody>
-      <tfoot><tr><td>공제금 합계</td><td class="num">${fmtMoney(deductionTotalKrw, deductionTotalUsd)}</td></tr></tfoot>
+      <tfoot><tr><td>공제금 합계</td><td class="num">${fmtMoney2(deductionTotalKrw, deductionTotalUsd)}</td></tr></tfoot>
     </table>
-    <div class="pp-net">수령액 ${fmtMoney(netKrw, netUsd)}</div>
+    <div class="pp-net">수령액 ${fmtMoney2(netKrw, netUsd)}</div>
   `;
 
   // 급여명세서 탭을 보고 있을 때만 미리 이미지를 만들어둬요(다른 탭에서는 불필요한 작업이라 생략).
