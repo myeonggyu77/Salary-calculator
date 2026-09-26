@@ -1409,17 +1409,50 @@ document.getElementById('payslip-jpg-btn').addEventListener('click', async (e) =
     renderPayslip();
     const target = document.getElementById('payslip-print-view');
     const canvas = await html2canvas(target, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
     const weekTitle = document.getElementById('payslip-week-title').textContent.replace('급여명세서', '').trim();
+    const fileName = `급여명세서_${weekTitle}.jpg`;
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+    if (!blob) throw new Error('이미지 변환에 실패했어요.');
+
+    // 아이폰(iOS Safari)은 <a download>로 데이터URL을 저장하는 게 거의 항상 무시돼서
+    // 아무 반응이 없는 것처럼 보여요. 대신 공유 시트를 띄워서 '사진에 저장'을 쓰게 해요.
+    const file = new File([blob], fileName, { type: 'image/jpeg' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        return;
+      } catch (shareErr) {
+        if (shareErr && shareErr.name === 'AbortError') return; // 사용자가 공유창을 취소함
+        // 공유가 막힌 경우(권한 등)엔 아래 데스크톱 방식으로 넘어가요.
+      }
+    }
+
+    // 데스크톱 등 <a download>가 실제로 동작하는 브라우저용 기본 저장 방식.
+    const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = `급여명세서_${weekTitle}.jpg`;
+    link.href = blobUrl;
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
   } catch (err) {
     console.error(err);
-    showToast('이미지 생성에 실패했어요: ' + err.message, 'error');
+    // 위 방법이 전부 안 될 때의 마지막 수단: 새 탭에 이미지를 열어서 길게 눌러 저장하게 안내해요.
+    try {
+      const target = document.getElementById('payslip-print-view');
+      const canvas = await html2canvas(target, { scale: 2, backgroundColor: '#ffffff' });
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      const w = window.open();
+      if (w) {
+        w.document.write(`<title>급여명세서</title><body style="margin:0;background:#111;"><img src="${dataUrl}" style="width:100%;"></body>`);
+        showToast('이미지를 새 탭에 열었어요. 이미지를 길게 눌러 저장해 주세요.', 'success');
+      } else {
+        showToast('이미지 생성에 실패했어요: ' + err.message, 'error');
+      }
+    } catch (err2) {
+      showToast('이미지 생성에 실패했어요: ' + err2.message, 'error');
+    }
   } finally {
     btn.disabled = false;
     btn.textContent = originalText;
