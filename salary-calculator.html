@@ -544,11 +544,18 @@
       <div class="form-grid">
         <div class="field"><div class="field-lbl">원천징수(연방소득세) 세율(%)</div><input type="number" id="payslip-tax-rate" min="0" step="0.1"></div>
         <div class="field"><div class="field-lbl">주간렌탈료 (USD)</div><input type="number" id="payslip-rental-fee" min="0" step="0.01"></div>
-        <div class="field"><div class="field-lbl">공제금 (USD, 수기입력)</div><input type="number" id="payslip-other-deduction" min="0" step="0.01"></div>
+      </div>
+      <div class="field">
+        <div class="field-lbl">공제금 항목 추가 (수기입력, 여러 건 가능)</div>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="payslip-deduction-item-label" placeholder="항목명 (예: 안전화 구입비)" style="flex:2;">
+          <input type="number" id="payslip-deduction-item-amount" min="0" step="0.01" placeholder="금액 (USD)" style="flex:1;">
+          <button class="ghost-btn" id="payslip-deduction-item-add-btn" style="flex:0 0 auto;">추가</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>공제 항목</th><th class="num">금액</th></tr></thead>
+          <thead><tr><th>공제 항목</th><th class="num">금액</th><th style="width:56px;"></th></tr></thead>
           <tbody id="payslip-deduction-tbody"></tbody>
           <tfoot id="payslip-deduction-tfoot"></tfoot>
         </table>
@@ -1369,31 +1376,34 @@ function renderPayslip() {
   `;
 
   if (!state.settings.payslipAdjustments) state.settings.payslipAdjustments = {};
-  const savedAdj = state.settings.payslipAdjustments[weekStartStr];
-  const adj = savedAdj || { taxRate: 17, rentalFee: 552.89, otherDeduction: 0 };
+  const adj = normalizePayslipAdj(state.settings.payslipAdjustments[weekStartStr]);
 
   document.getElementById('payslip-tax-rate').value = adj.taxRate;
   document.getElementById('payslip-rental-fee').value = adj.rentalFee;
-  document.getElementById('payslip-other-deduction').value = adj.otherDeduction;
 
   // 공제금(세금·렌탈료·기타)은 USD로 입력받고, 근무주 마지막 날의 환율로 원화 환산해요.
   const fxRate = resolveFxRate(weekEndStr);
   const taxUsd = totalUsd * (Number(adj.taxRate) || 0) / 100;
   const rentalUsd = Number(adj.rentalFee) || 0;
-  const otherUsd = Number(adj.otherDeduction) || 0;
+  const otherItemsUsd = adj.otherDeductions.reduce((s, it) => s + (Number(it.amountUsd) || 0), 0);
   const taxKrw = taxUsd * fxRate;
   const rentalKrw = rentalUsd * fxRate;
-  const otherKrw = otherUsd * fxRate;
-  const deductionTotalUsd = taxUsd + rentalUsd + otherUsd;
-  const deductionTotalKrw = taxKrw + rentalKrw + otherKrw;
+  const deductionTotalUsd = taxUsd + rentalUsd + otherItemsUsd;
+  const deductionTotalKrw = deductionTotalUsd * fxRate;
+
+  const otherItemRowsHtml = (delBtn) => adj.otherDeductions.map(it => {
+    const amtUsd = Number(it.amountUsd) || 0;
+    const amtKrw = amtUsd * fxRate;
+    return `<tr><td>${escapeHtml(it.label || '공제금')}</td><td class="num">${fmtMoney(amtKrw, amtUsd)}</td>${delBtn ? `<td><button class="icon-btn danger" data-del-deduction-item="${it.id}">삭제</button></td>` : ''}</tr>`;
+  }).join('');
 
   document.getElementById('payslip-deduction-tbody').innerHTML = `
-    <tr><td>원천징수 (연방소득세 ${adj.taxRate}%)</td><td class="num">${fmtMoney(taxKrw, taxUsd)}</td></tr>
-    <tr><td>주간렌탈료</td><td class="num">${fmtMoney(rentalKrw, rentalUsd)}</td></tr>
-    <tr><td>공제금</td><td class="num">${fmtMoney(otherKrw, otherUsd)}</td></tr>
+    <tr><td>원천징수 (연방소득세 ${adj.taxRate}%)</td><td class="num">${fmtMoney(taxKrw, taxUsd)}</td><td></td></tr>
+    <tr><td>주간렌탈료</td><td class="num">${fmtMoney(rentalKrw, rentalUsd)}</td><td></td></tr>
+    ${otherItemRowsHtml(true)}
   `;
   document.getElementById('payslip-deduction-tfoot').innerHTML = `
-    <tr style="font-weight:700; border-top:1px solid var(--ink);"><td>공제금 합계</td><td class="num">${fmtMoney(deductionTotalKrw, deductionTotalUsd)}</td></tr>
+    <tr style="font-weight:700; border-top:1px solid var(--ink);"><td>공제금 합계</td><td class="num">${fmtMoney(deductionTotalKrw, deductionTotalUsd)}</td><td></td></tr>
   `;
 
   const netUsd = totalUsd - deductionTotalUsd;
@@ -1424,7 +1434,7 @@ function renderPayslip() {
       <tbody>
         <tr><td>원천징수 (연방소득세 ${adj.taxRate}%)</td><td class="num">${fmtMoney(taxKrw, taxUsd)}</td></tr>
         <tr><td>주간렌탈료</td><td class="num">${fmtMoney(rentalKrw, rentalUsd)}</td></tr>
-        <tr><td>공제금</td><td class="num">${fmtMoney(otherKrw, otherUsd)}</td></tr>
+        ${otherItemRowsHtml(false)}
       </tbody>
       <tfoot><tr><td>공제금 합계</td><td class="num">${fmtMoney(deductionTotalKrw, deductionTotalUsd)}</td></tr></tfoot>
     </table>
@@ -1437,13 +1447,64 @@ function renderPayslip() {
   }
 }
 
-function updatePayslipAdjustment(field, value) {
+function currentPayslipWeekKey() {
   const ds = dateStr(payslipWeekDate.getFullYear(), payslipWeekDate.getMonth(), payslipWeekDate.getDate());
   const { weekStart } = getWeekContaining(ds);
-  const weekStartStr = dateStr(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+  return dateStr(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+}
+
+// 예전엔 공제금이 숫자 하나(otherDeduction)였는데, 여러 항목을 추가할 수 있는 목록
+// (otherDeductions)으로 바꿨어요. 예전 데이터가 있으면 항목 1개로 변환해요.
+function normalizePayslipAdj(current) {
+  const normalized = { taxRate: 17, rentalFee: 552.89, otherDeductions: [] };
+  if (current) {
+    if (current.taxRate != null) normalized.taxRate = current.taxRate;
+    if (current.rentalFee != null) normalized.rentalFee = current.rentalFee;
+    if (Array.isArray(current.otherDeductions)) {
+      normalized.otherDeductions = current.otherDeductions;
+    } else if (current.otherDeduction) {
+      normalized.otherDeductions = [{ id: 'legacy', label: '공제금', amountUsd: Number(current.otherDeduction) || 0 }];
+    }
+  }
+  return normalized;
+}
+
+function updatePayslipAdjustment(field, value) {
+  const weekStartStr = currentPayslipWeekKey();
   if (!state.settings.payslipAdjustments) state.settings.payslipAdjustments = {};
-  const current = state.settings.payslipAdjustments[weekStartStr] || { taxRate: 17, rentalFee: 552.89, otherDeduction: 0 };
+  const current = normalizePayslipAdj(state.settings.payslipAdjustments[weekStartStr]);
   current[field] = Number(value) || 0;
+  state.settings.payslipAdjustments[weekStartStr] = current;
+  scheduleSave();
+  renderPayslip();
+}
+
+function addPayslipDeductionItem() {
+  const labelInput = document.getElementById('payslip-deduction-item-label');
+  const amountInput = document.getElementById('payslip-deduction-item-amount');
+  const label = labelInput.value.trim();
+  const amountUsd = Number(amountInput.value) || 0;
+  if (!label || amountUsd <= 0) {
+    showToast('항목명과 금액을 모두 입력해 주세요.', 'error');
+    return;
+  }
+  const weekStartStr = currentPayslipWeekKey();
+  if (!state.settings.payslipAdjustments) state.settings.payslipAdjustments = {};
+  const current = normalizePayslipAdj(state.settings.payslipAdjustments[weekStartStr]);
+  current.otherDeductions.push({ id: 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), label, amountUsd });
+  state.settings.payslipAdjustments[weekStartStr] = current;
+  labelInput.value = '';
+  amountInput.value = '';
+  scheduleSave();
+  renderPayslip();
+  labelInput.focus();
+}
+
+function removePayslipDeductionItem(id) {
+  const weekStartStr = currentPayslipWeekKey();
+  if (!state.settings.payslipAdjustments) state.settings.payslipAdjustments = {};
+  const current = normalizePayslipAdj(state.settings.payslipAdjustments[weekStartStr]);
+  current.otherDeductions = current.otherDeductions.filter(it => it.id !== id);
   state.settings.payslipAdjustments[weekStartStr] = current;
   scheduleSave();
   renderPayslip();
@@ -1451,7 +1512,12 @@ function updatePayslipAdjustment(field, value) {
 
 document.getElementById('payslip-tax-rate').addEventListener('change', (e) => updatePayslipAdjustment('taxRate', e.target.value));
 document.getElementById('payslip-rental-fee').addEventListener('change', (e) => updatePayslipAdjustment('rentalFee', e.target.value));
-document.getElementById('payslip-other-deduction').addEventListener('change', (e) => updatePayslipAdjustment('otherDeduction', e.target.value));
+document.getElementById('payslip-deduction-item-add-btn').addEventListener('click', addPayslipDeductionItem);
+document.getElementById('payslip-deduction-item-amount').addEventListener('keydown', (e) => { if (e.key === 'Enter') addPayslipDeductionItem(); });
+document.getElementById('payslip-deduction-tbody').addEventListener('click', (e) => {
+  const id = e.target.dataset.delDeductionItem;
+  if (id) removePayslipDeductionItem(id);
+});
 
 document.getElementById('payslip-prev-btn').addEventListener('click', () => {
   payslipWeekDate.setDate(payslipWeekDate.getDate() - 7);
