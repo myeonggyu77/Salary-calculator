@@ -534,7 +534,7 @@
       <h3>주간 정산내역</h3>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>구분</th><th class="num">시간</th><th class="num">샤크정산시간</th><th class="num">기준액</th><th class="num">금액</th></tr></thead>
+          <thead><tr><th>구분</th><th class="num">시간</th><th class="num">샤크정산시간</th><th class="num">최종시간</th><th class="num">기준액</th><th class="num">금액</th></tr></thead>
           <tbody id="payslip-earnings-tbody"></tbody>
           <tfoot id="payslip-earnings-tfoot"></tfoot>
         </table>
@@ -1404,12 +1404,12 @@ function renderPayslip() {
   const total = regularPay + otPay + benefitPay;
 
   document.getElementById('payslip-earnings-tbody').innerHTML = `
-    <tr><td>정규근무</td><td class="num">${regularHoursSum}h</td><td class="num"><input type="number" class="shrink-hours-input payslip-shrink-input" data-shrink-cat="regular" min="0" step="0.5" value="${shrink.regular}"></td><td class="num">${fmtUsd2(avgRegularRate)}/h</td><td class="num">${fmtMoney2(regularPay, regularPayUsdAdj)}</td></tr>
-    <tr><td>연장근무 (×${US_OT_MULTIPLIER})</td><td class="num">${otHoursSum}h</td><td class="num"><input type="number" class="shrink-hours-input payslip-shrink-input" data-shrink-cat="ot" min="0" step="0.5" value="${shrink.ot}"></td><td class="num">${fmtUsd2(avgOtRate)}/h</td><td class="num">${fmtMoney2(otPay, otPayUsdAdj)}</td></tr>
-    <tr><td>복리후생</td><td class="num">${benefitHoursSum}h</td><td class="num"><input type="number" class="shrink-hours-input payslip-shrink-input" data-shrink-cat="benefit" min="0" step="0.5" value="${shrink.benefit}"></td><td class="num">${fmtUsd2(avgBenefitRate)}/h</td><td class="num">${fmtMoney2(benefitPay, benefitPayUsdAdj)}</td></tr>
+    <tr><td>정규근무</td><td class="num">${regularHoursSum}h</td><td class="num"><input type="number" class="shrink-hours-input payslip-shrink-input" data-shrink-cat="regular" min="0" step="0.5" value="${shrink.regular}"></td><td class="num">${adjRegularHours}h</td><td class="num">${fmtUsd2(avgRegularRate)}/h</td><td class="num">${fmtMoney2(regularPay, regularPayUsdAdj)}</td></tr>
+    <tr><td>연장근무 (×${US_OT_MULTIPLIER})</td><td class="num">${otHoursSum}h</td><td class="num"><input type="number" class="shrink-hours-input payslip-shrink-input" data-shrink-cat="ot" min="0" step="0.5" value="${shrink.ot}"></td><td class="num">${adjOtHours}h</td><td class="num">${fmtUsd2(avgOtRate)}/h</td><td class="num">${fmtMoney2(otPay, otPayUsdAdj)}</td></tr>
+    <tr><td>복리후생</td><td class="num">${benefitHoursSum}h</td><td class="num"><input type="number" class="shrink-hours-input payslip-shrink-input" data-shrink-cat="benefit" min="0" step="0.5" value="${shrink.benefit}"></td><td class="num">${adjBenefitHours}h</td><td class="num">${fmtUsd2(avgBenefitRate)}/h</td><td class="num">${fmtMoney2(benefitPay, benefitPayUsdAdj)}</td></tr>
   `;
   document.getElementById('payslip-earnings-tfoot').innerHTML = `
-    <tr style="font-weight:700; border-top:1px solid var(--ink);"><td colspan="4">정산내역 합계</td><td class="num">${fmtMoney2(total, totalUsd)}</td></tr>
+    <tr style="font-weight:700; border-top:1px solid var(--ink);"><td colspan="5">정산내역 합계</td><td class="num">${fmtMoney2(total, totalUsd)}</td></tr>
   `;
 
   const rentalUsd = Number(adj.rentalFee) || 0;
@@ -1450,13 +1450,13 @@ function renderPayslip() {
     <div class="pp-sub">${fxRateText}</div>
     <h3>주간 정산내역</h3>
     <table>
-      <thead><tr><th>구분</th><th class="num">시간</th><th class="num">샤크정산시간</th><th class="num">기준액</th><th class="num">금액</th></tr></thead>
+      <thead><tr><th>구분</th><th class="num">시간</th><th class="num">샤크정산시간</th><th class="num">최종시간</th><th class="num">기준액</th><th class="num">금액</th></tr></thead>
       <tbody>
-        <tr><td>정규근무</td><td class="num">${regularHoursSum}h</td><td class="num">${shrink.regular || 0}h</td><td class="num">${fmtUsd2(avgRegularRate)}/h</td><td class="num">${fmtMoney2(regularPay, regularPayUsdAdj)}</td></tr>
-        <tr><td>연장근무 (×${US_OT_MULTIPLIER})</td><td class="num">${otHoursSum}h</td><td class="num">${shrink.ot || 0}h</td><td class="num">${fmtUsd2(avgOtRate)}/h</td><td class="num">${fmtMoney2(otPay, otPayUsdAdj)}</td></tr>
-        <tr><td>복리후생</td><td class="num">${benefitHoursSum}h</td><td class="num">${shrink.benefit || 0}h</td><td class="num">${fmtUsd2(avgBenefitRate)}/h</td><td class="num">${fmtMoney2(benefitPay, benefitPayUsdAdj)}</td></tr>
+        <tr><td>정규근무</td><td class="num">${regularHoursSum}h</td><td class="num">${shrink.regular || 0}h</td><td class="num">${adjRegularHours}h</td><td class="num">${fmtUsd2(avgRegularRate)}/h</td><td class="num">${fmtMoney2(regularPay, regularPayUsdAdj)}</td></tr>
+        <tr><td>연장근무 (×${US_OT_MULTIPLIER})</td><td class="num">${otHoursSum}h</td><td class="num">${shrink.ot || 0}h</td><td class="num">${adjOtHours}h</td><td class="num">${fmtUsd2(avgOtRate)}/h</td><td class="num">${fmtMoney2(otPay, otPayUsdAdj)}</td></tr>
+        <tr><td>복리후생</td><td class="num">${benefitHoursSum}h</td><td class="num">${shrink.benefit || 0}h</td><td class="num">${adjBenefitHours}h</td><td class="num">${fmtUsd2(avgBenefitRate)}/h</td><td class="num">${fmtMoney2(benefitPay, benefitPayUsdAdj)}</td></tr>
       </tbody>
-      <tfoot><tr><td colspan="4">정산내역 합계</td><td class="num">${fmtMoney2(total, totalUsd)}</td></tr></tfoot>
+      <tfoot><tr><td colspan="5">정산내역 합계</td><td class="num">${fmtMoney2(total, totalUsd)}</td></tr></tfoot>
     </table>
     <h3>공제금</h3>
     <table>
