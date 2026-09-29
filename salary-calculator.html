@@ -592,7 +592,7 @@
         <div class="field"><div class="field-lbl">시작일 (1주차 시작)</div><input type="date" id="forecast-start-date"></div>
         <div class="field"><div class="field-lbl">기간 (주 수)</div><input type="number" id="forecast-week-count" min="1" max="104" step="1"></div>
       </div>
-      <div class="form-note" style="margin-bottom:0;">노란 배경 칸(시간·금액 합계, 복리후생시간, 공제계, 실수령액)은 자동으로 계산돼요. 흰 배경 칸(기준시급·근무시간·렌탈료·기타공제·적용환율)은 예시 값이 미리 채워져 있고, 주차마다 직접 수정할 수 있어요.</div>
+      <div class="form-note" style="margin-bottom:0;">노란 배경 칸(시간·금액 합계, 복리후생시간, 연방세금 공제액, 공제계, 실수령액)은 자동으로 계산돼요. 흰 배경 칸(기준시급·근무시간·연방세율·렌탈료·기타공제·적용환율)은 예시 값이 미리 채워져 있고, 주차마다 직접 수정할 수 있어요.</div>
     </div>
 
     <div class="kpi-row" style="margin-bottom:16px;">
@@ -1656,7 +1656,7 @@ document.getElementById('payslip-jpg-btn').addEventListener('click', async (e) =
 // 렌탈료는 25주차(원본 65주차)부터 552.89 -> 435.45로 낮아지는 것과, 기타공제가 4~5주 간격으로
 // 한 번씩(1주차 제외) 1500달러씩 나가는 패턴을 그대로 반영했어요. 36주를 넘어가는 주차는
 // 가장 마지막 주(36번째)의 값을 계속 이어서 써요.
-const FORECAST_RATE_DEFAULTS = { baseRate: 36.15, otRate: 54.225, benefitRate: 15.92, fxRate: 1360 };
+const FORECAST_RATE_DEFAULTS = { baseRate: 36.15, otRate: 54.225, benefitRate: 15.92, fxRate: 1360, taxRate: 17 };
 const FORECAST_WEEK_DEFAULTS = [
   { regularHours: 40, otHours: 18, rentalFee: 552.89, otherDeduction: 600 },
   { regularHours: 12, otHours: 0,  rentalFee: 552.89, otherDeduction: 0 },
@@ -1724,7 +1724,7 @@ function forecastWeekData(idx) {
   return Object.assign({}, defaults, saved);
 }
 
-// 노란 셀(자동 계산)만 여기서 계산해요 — 기준시급·근무시간·렌탈료·기타공제·환율은
+// 노란 셀(자동 계산)만 여기서 계산해요 — 기준시급·근무시간·렌탈료·기타공제·연방세율·환율은
 // 전부 사용자가 직접 입력한 값을 그대로 가져다 씁니다.
 function computeForecastWeek(data) {
   const regularHours = Number(data.regularHours) || 0;
@@ -1737,13 +1737,16 @@ function computeForecastWeek(data) {
   const otPay = otHours * otRate;
   const benefitPay = benefitHours * benefitRate;
   const weekTotalUsd = regularPay + otPay + benefitPay;
+  // 연방세금(원천징수): 주간 합계 × 세율(%)로 자동 계산해요.
+  const taxRate = Number(data.taxRate) || 0;
+  const taxUsd = weekTotalUsd * taxRate / 100;
   const rentalFee = Number(data.rentalFee) || 0;
   const otherDeduction = Number(data.otherDeduction) || 0;
-  const deductionTotal = rentalFee + otherDeduction;
+  const deductionTotal = taxUsd + rentalFee + otherDeduction;
   const netUsd = weekTotalUsd - deductionTotal;
   const fxRate = Number(data.fxRate) || 0;
   const netKrw = netUsd * fxRate;
-  return { regularHours, otHours, benefitHours, regularPay, otPay, benefitPay, weekTotalUsd, rentalFee, otherDeduction, deductionTotal, netUsd, fxRate, netKrw };
+  return { regularHours, otHours, benefitHours, regularPay, otPay, benefitPay, weekTotalUsd, taxRate, taxUsd, rentalFee, otherDeduction, deductionTotal, netUsd, fxRate, netKrw };
 }
 
 function updateForecastSetting(field, value) {
@@ -1824,10 +1827,12 @@ function renderForecast() {
       </div>
       <div class="fc-week-total fc-auto-box"><span>주간 합계</span><span>${fmtUsd2(c.weekTotalUsd)}</span></div>
       <div class="form-grid" style="margin-top:10px; margin-bottom:0;">
+        <div class="field"><div class="field-lbl">연방세금 (%)</div><input class="fc-input" type="number" min="0" step="0.1" data-week="${i}" data-field="taxRate" value="${data.taxRate}"></div>
         <div class="field"><div class="field-lbl">렌탈료 (USD)</div><input class="fc-input" type="number" min="0" step="0.01" data-week="${i}" data-field="rentalFee" value="${data.rentalFee}"></div>
         <div class="field"><div class="field-lbl">기타공제 (USD)</div><input class="fc-input" type="number" min="0" step="0.01" data-week="${i}" data-field="otherDeduction" value="${data.otherDeduction}"></div>
         <div class="field"><div class="field-lbl">적용환율</div><input class="fc-input" type="number" min="0" step="0.01" data-week="${i}" data-field="fxRate" value="${data.fxRate}"></div>
       </div>
+      <div class="fc-week-total fc-auto-box" style="margin-top:8px;"><span>연방세금 공제액 (${data.taxRate}%)</span><span>${fmtUsd2(c.taxUsd)}</span></div>
       <div class="kpi-row" style="margin-top:4px; margin-bottom:0;">
         <div class="kpi fc-auto"><div class="lbl">공제계</div><div class="val">${fmtUsd2(c.deductionTotal)}</div></div>
         <div class="kpi fc-auto"><div class="lbl">실수령액(USD)</div><div class="val">${fmtUsd2(c.netUsd)}</div></div>
