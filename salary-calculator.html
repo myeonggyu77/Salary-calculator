@@ -1656,7 +1656,7 @@ document.getElementById('payslip-jpg-btn').addEventListener('click', async (e) =
 // 렌탈료는 25주차(원본 65주차)부터 552.89 -> 435.45로 낮아지는 것과, 기타공제가 4~5주 간격으로
 // 한 번씩(1주차 제외) 1500달러씩 나가는 패턴을 그대로 반영했어요. 36주를 넘어가는 주차는
 // 가장 마지막 주(36번째)의 값을 계속 이어서 써요.
-const FORECAST_RATE_DEFAULTS = { baseRate: 36.15, otRate: 70.145, benefitRate: 15.92, fxRate: 1360 };
+const FORECAST_RATE_DEFAULTS = { baseRate: 36.15, otRate: 54.225, benefitRate: 15.92, fxRate: 1360 };
 const FORECAST_WEEK_DEFAULTS = [
   { regularHours: 40, otHours: 18, rentalFee: 552.89, otherDeduction: 600 },
   { regularHours: 12, otHours: 0,  rentalFee: 552.89, otherDeduction: 0 },
