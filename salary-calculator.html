@@ -95,7 +95,6 @@
   .time-range-row select { flex: 1 1 0; min-width: 0; }
   .time-range-sep { color: var(--ink-faint); flex: 0 0 auto; }
   .checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); cursor: pointer; margin-top: 8px; }
-  .shrink-hours-input { width: 72px; height: 28px; text-align: right; display: inline-block; }
   .checkbox-row input[type="checkbox"] { width: auto; height: auto; }
 
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -542,7 +541,7 @@
       <h3>주간 정산내역</h3>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>구분</th><th class="num">시간</th><th class="num">샤크정산시간</th><th class="num">최종시간</th><th class="num">기준액</th><th class="num">금액</th></tr></thead>
+          <thead><tr><th>구분</th><th class="num">시간</th><th class="num">기준액</th><th class="num">금액</th></tr></thead>
           <tbody id="payslip-earnings-tbody"></tbody>
           <tfoot id="payslip-earnings-tfoot"></tfoot>
         </table>
@@ -1488,33 +1487,21 @@ function renderPayslip() {
   const avgOtPremiumRate = otPremiumHoursSum > 0 ? otPremiumPayUsd / otPremiumHoursSum : 0;
   const avgFringeRate = fringeHoursSum > 0 ? fringePayUsd / fringeHoursSum : 0;
 
-  // 샤크정산시간(수기입력): 줄마다 시간에서 빼고 남은 시간 × 기준액으로 금액을 다시 계산해요.
-  // 예) 시간 8h, 샤크정산 1h → (8-1)h × 기준액 = 금액
-  // Overtime Straight/Premium은 같은 시간을 두 가지 단가로 나눈 것이라, 샤크정산시간도 하나로
-  // 같이 적용돼요(Overtime Straight 줄에서 입력).
-  const shrink = adj.shrinkHours;
-  const adjRegularHours = Math.max(0, regularHoursSum - (Number(shrink.regular) || 0));
-  const adjOtHours = Math.max(0, otStraightHoursSum - (Number(shrink.ot) || 0));
-  const adjFringeHours = Math.max(0, fringeHoursSum - (Number(shrink.fringe) || 0));
-  const regularPayUsdAdj = adjRegularHours * avgRegularRate;
-  const otStraightPayUsdAdj = adjOtHours * avgOtStraightRate;
-  const otPremiumPayUsdAdj = adjOtHours * avgOtPremiumRate;
-  const fringePayUsdAdj = adjFringeHours * avgFringeRate;
-  const regularPay = regularPayUsdAdj * fxRate;
-  const otStraightPay = otStraightPayUsdAdj * fxRate;
-  const otPremiumPay = otPremiumPayUsdAdj * fxRate;
-  const fringePay = fringePayUsdAdj * fxRate;
-  const totalUsd = regularPayUsdAdj + otStraightPayUsdAdj + otPremiumPayUsdAdj + fringePayUsdAdj;
+  const regularPay = regularPayUsd * fxRate;
+  const otStraightPay = otStraightPayUsd * fxRate;
+  const otPremiumPay = otPremiumPayUsd * fxRate;
+  const fringePay = fringePayUsd * fxRate;
+  const totalUsd = regularPayUsd + otStraightPayUsd + otPremiumPayUsd + fringePayUsd;
   const total = regularPay + otStraightPay + otPremiumPay + fringePay;
 
   document.getElementById('payslip-earnings-tbody').innerHTML = `
-    <tr><td>Regular Pay</td><td class="num">${regularHoursSum}h</td><td class="num"><input type="number" class="shrink-hours-input payslip-shrink-input" data-shrink-cat="regular" min="0" step="0.5" value="${shrink.regular}"></td><td class="num">${adjRegularHours}h</td><td class="num">${fmtUsd2(avgRegularRate)}/h</td><td class="num">${fmtMoney2(regularPay, regularPayUsdAdj)}</td></tr>
-    <tr><td>Overtime Straight</td><td class="num">${otStraightHoursSum}h</td><td class="num"><input type="number" class="shrink-hours-input payslip-shrink-input" data-shrink-cat="ot" min="0" step="0.5" value="${shrink.ot}"></td><td class="num">${adjOtHours}h</td><td class="num">${fmtUsd2(avgOtStraightRate)}/h</td><td class="num">${fmtMoney2(otStraightPay, otStraightPayUsdAdj)}</td></tr>
-    <tr><td>Overtime Premium (×0.5)</td><td class="num">${otPremiumHoursSum}h</td><td class="num">${shrink.ot || 0}h</td><td class="num">${adjOtHours}h</td><td class="num">${fmtUsd2(avgOtPremiumRate)}/h</td><td class="num">${fmtMoney2(otPremiumPay, otPremiumPayUsdAdj)}</td></tr>
-    <tr><td>Fringe</td><td class="num">${fringeHoursSum}h</td><td class="num"><input type="number" class="shrink-hours-input payslip-shrink-input" data-shrink-cat="fringe" min="0" step="0.5" value="${shrink.fringe}"></td><td class="num">${adjFringeHours}h</td><td class="num">${fmtUsd2(avgFringeRate)}/h</td><td class="num">${fmtMoney2(fringePay, fringePayUsdAdj)}</td></tr>
+    <tr><td>Regular Pay</td><td class="num">${regularHoursSum}h</td><td class="num">${fmtUsd2(avgRegularRate)}/h</td><td class="num">${fmtMoney2(regularPay, regularPayUsd)}</td></tr>
+    <tr><td>Overtime Straight</td><td class="num">${otStraightHoursSum}h</td><td class="num">${fmtUsd2(avgOtStraightRate)}/h</td><td class="num">${fmtMoney2(otStraightPay, otStraightPayUsd)}</td></tr>
+    <tr><td>Overtime Premium (×0.5)</td><td class="num">${otPremiumHoursSum}h</td><td class="num">${fmtUsd2(avgOtPremiumRate)}/h</td><td class="num">${fmtMoney2(otPremiumPay, otPremiumPayUsd)}</td></tr>
+    <tr><td>Fringe</td><td class="num">${fringeHoursSum}h</td><td class="num">${fmtUsd2(avgFringeRate)}/h</td><td class="num">${fmtMoney2(fringePay, fringePayUsd)}</td></tr>
   `;
   document.getElementById('payslip-earnings-tfoot').innerHTML = `
-    <tr style="font-weight:700; border-top:1px solid var(--ink);"><td colspan="5">정산내역 합계</td><td class="num">${fmtMoney2(total, totalUsd)}</td></tr>
+    <tr style="font-weight:700; border-top:1px solid var(--ink);"><td colspan="3">정산내역 합계</td><td class="num">${fmtMoney2(total, totalUsd)}</td></tr>
   `;
 
   const rentalUsd = Number(adj.rentalFee) || 0;
@@ -1555,14 +1542,14 @@ function renderPayslip() {
     <div class="pp-sub">${fxRateText}</div>
     <h3>주간 정산내역</h3>
     <table>
-      <thead><tr><th>구분</th><th class="num">시간</th><th class="num">샤크정산시간</th><th class="num">최종시간</th><th class="num">기준액</th><th class="num">금액</th></tr></thead>
+      <thead><tr><th>구분</th><th class="num">시간</th><th class="num">기준액</th><th class="num">금액</th></tr></thead>
       <tbody>
-        <tr><td>Regular Pay</td><td class="num">${regularHoursSum}h</td><td class="num">${shrink.regular || 0}h</td><td class="num">${adjRegularHours}h</td><td class="num">${fmtUsd2(avgRegularRate)}/h</td><td class="num">${fmtMoney2(regularPay, regularPayUsdAdj)}</td></tr>
-        <tr><td>Overtime Straight</td><td class="num">${otStraightHoursSum}h</td><td class="num">${shrink.ot || 0}h</td><td class="num">${adjOtHours}h</td><td class="num">${fmtUsd2(avgOtStraightRate)}/h</td><td class="num">${fmtMoney2(otStraightPay, otStraightPayUsdAdj)}</td></tr>
-        <tr><td>Overtime Premium (×0.5)</td><td class="num">${otPremiumHoursSum}h</td><td class="num">${shrink.ot || 0}h</td><td class="num">${adjOtHours}h</td><td class="num">${fmtUsd2(avgOtPremiumRate)}/h</td><td class="num">${fmtMoney2(otPremiumPay, otPremiumPayUsdAdj)}</td></tr>
-        <tr><td>Fringe</td><td class="num">${fringeHoursSum}h</td><td class="num">${shrink.fringe || 0}h</td><td class="num">${adjFringeHours}h</td><td class="num">${fmtUsd2(avgFringeRate)}/h</td><td class="num">${fmtMoney2(fringePay, fringePayUsdAdj)}</td></tr>
+        <tr><td>Regular Pay</td><td class="num">${regularHoursSum}h</td><td class="num">${fmtUsd2(avgRegularRate)}/h</td><td class="num">${fmtMoney2(regularPay, regularPayUsd)}</td></tr>
+        <tr><td>Overtime Straight</td><td class="num">${otStraightHoursSum}h</td><td class="num">${fmtUsd2(avgOtStraightRate)}/h</td><td class="num">${fmtMoney2(otStraightPay, otStraightPayUsd)}</td></tr>
+        <tr><td>Overtime Premium (×0.5)</td><td class="num">${otPremiumHoursSum}h</td><td class="num">${fmtUsd2(avgOtPremiumRate)}/h</td><td class="num">${fmtMoney2(otPremiumPay, otPremiumPayUsd)}</td></tr>
+        <tr><td>Fringe</td><td class="num">${fringeHoursSum}h</td><td class="num">${fmtUsd2(avgFringeRate)}/h</td><td class="num">${fmtMoney2(fringePay, fringePayUsd)}</td></tr>
       </tbody>
-      <tfoot><tr><td colspan="5">정산내역 합계</td><td class="num">${fmtMoney2(total, totalUsd)}</td></tr></tfoot>
+      <tfoot><tr><td colspan="3">정산내역 합계</td><td class="num">${fmtMoney2(total, totalUsd)}</td></tr></tfoot>
     </table>
     <h3>공제금</h3>
     <table>
@@ -1592,7 +1579,7 @@ function currentPayslipWeekKey() {
 // 예전엔 공제금이 숫자 하나(otherDeduction)였는데, 여러 항목을 추가할 수 있는 목록
 // (otherDeductions)으로 바꿨어요. 예전 데이터가 있으면 항목 1개로 변환해요.
 function normalizePayslipAdj(current) {
-  const normalized = { taxRate: 17, rentalFee: 552.89, otherDeductions: [], shrinkHours: { regular: 0, ot: 0, fringe: 0 } };
+  const normalized = { taxRate: 17, rentalFee: 552.89, otherDeductions: [] };
   if (current) {
     if (current.taxRate != null) normalized.taxRate = current.taxRate;
     if (current.rentalFee != null) normalized.rentalFee = current.rentalFee;
@@ -1600,15 +1587,6 @@ function normalizePayslipAdj(current) {
       normalized.otherDeductions = current.otherDeductions;
     } else if (current.otherDeduction) {
       normalized.otherDeductions = [{ id: 'legacy', label: '공제금', amountUsd: Number(current.otherDeduction) || 0 }];
-    }
-    if (current.shrinkHours) {
-      const sh = current.shrinkHours;
-      // 예전엔 복리후생 샤크정산시간 키 이름이 'benefit'이었어요.
-      normalized.shrinkHours = {
-        regular: Number(sh.regular) || 0,
-        ot: Number(sh.ot) || 0,
-        fringe: sh.fringe != null ? (Number(sh.fringe) || 0) : (Number(sh.benefit) || 0)
-      };
     }
   }
   return normalized;
@@ -1655,16 +1633,6 @@ function removePayslipDeductionItem(id) {
   renderPayslip();
 }
 
-function updatePayslipShrinkHours(category, value) {
-  const weekStartStr = currentPayslipWeekKey();
-  if (!state.settings.payslipAdjustments) state.settings.payslipAdjustments = {};
-  const current = normalizePayslipAdj(state.settings.payslipAdjustments[weekStartStr]);
-  current.shrinkHours[category] = Math.max(0, Number(value) || 0);
-  state.settings.payslipAdjustments[weekStartStr] = current;
-  scheduleSave();
-  renderPayslip();
-}
-
 document.getElementById('payslip-tax-rate').addEventListener('change', (e) => updatePayslipAdjustment('taxRate', e.target.value));
 document.getElementById('payslip-rental-fee').addEventListener('change', (e) => updatePayslipAdjustment('rentalFee', e.target.value));
 document.getElementById('payslip-deduction-item-add-btn').addEventListener('click', addPayslipDeductionItem);
@@ -1672,11 +1640,6 @@ document.getElementById('payslip-deduction-item-amount').addEventListener('keydo
 document.getElementById('payslip-deduction-tbody').addEventListener('click', (e) => {
   const id = e.target.dataset.delDeductionItem;
   if (id) removePayslipDeductionItem(id);
-});
-document.getElementById('payslip-earnings-tbody').addEventListener('change', (e) => {
-  if (e.target.classList.contains('payslip-shrink-input')) {
-    updatePayslipShrinkHours(e.target.dataset.shrinkCat, e.target.value);
-  }
 });
 
 document.getElementById('payslip-prev-btn').addEventListener('click', () => {
