@@ -774,6 +774,17 @@ function fmtMoney2(krw, usd) {
   return `${fmtWon(krw)} <span class="money-usd">(${fmtUsd2(usd)})</span>`;
 }
 
+// 미국급여(usd_daily)는 달러가 기준이라, 달러를 먼저 보여주고 원화는 괄호 안에 보조로 표기해요.
+function fmtMoneyUsdFirst(usd, krw) {
+  if (amountsHidden) return fmtUsd(usd);
+  return `${fmtUsd(usd)} <span class="money-usd">(${fmtWon(krw)})</span>`;
+}
+
+function fmtMoneyUsdFirst2(usd, krw) {
+  if (amountsHidden) return fmtUsd2(usd);
+  return `${fmtUsd2(usd)} <span class="money-usd">(${fmtWon(krw)})</span>`;
+}
+
 // 급여현황 그래프 막대 위에 쓰는 표기: 원화는 만원 단위(소수점 없음)로,
 // 원화·달러를 줄바꿈으로 두 줄에 나눠 표기해요.
 function fmtMoneyCompact(krw, usd) {
@@ -1180,7 +1191,7 @@ function renderLogsTable() {
         <td></td><td colspan="3">${wkRangeLabel} 급여 소계</td>
         <td></td><td></td><td></td>
         <td class="num">-</td>
-        <td class="num" style="font-weight:700;">${fmtMoney(wkTotal, wkTotalUsd)}</td>
+        <td class="num" style="font-weight:700;">${fmtMoneyUsdFirst(wkTotalUsd, wkTotal)}</td>
         <td></td>
       </tr>`);
     }
@@ -1216,7 +1227,7 @@ function renderLogsTable() {
       const idCells = `<td rowspan="4"><input type="checkbox" class="log-check" data-id="${log.id}"></td>
       <td rowspan="4" class="num">${fmtWeekLabel(log.date)}</td>
       <td rowspan="4">${log.date || ''}</td>`;
-      const totalCell = `<td rowspan="4" class="num" style="font-weight:700;">${fmtMoney(c.total, c.totalUsd)}</td>`;
+      const totalCell = `<td rowspan="4" class="num" style="font-weight:700;">${fmtMoneyUsdFirst(c.totalUsd, c.total)}</td>`;
       const actionsCell = `<td rowspan="4" style="white-space:nowrap; vertical-align:top;"><div class="stacked-actions"><button class="icon-btn" data-edit="${log.id}">수정</button><button class="icon-btn danger" data-del="${log.id}">삭제</button></div></td>`;
 
       rowsHtml.push(`<tr class="log-group-start">
@@ -1225,7 +1236,7 @@ function renderLogsTable() {
         <td class="num">${fmtUsd(baseRate)}</td>
         <td class="num">${c.regularHours}h</td>
         <td class="num">${fmtTimeRange(log.workStart, log.workEnd)}</td>
-        <td class="num">${fmtMoney(c.regularPay, c.regularPayUsd)}</td>
+        <td class="num">${fmtMoneyUsdFirst(c.regularPayUsd, c.regularPay)}</td>
         ${totalCell}
         ${actionsCell}
       </tr>
@@ -1234,21 +1245,21 @@ function renderLogsTable() {
         <td class="num">${fmtUsd(baseRate)}</td>
         <td class="num">${c.otStraightHours}h</td>
         <td class="num">-</td>
-        <td class="num">${fmtMoney(c.otStraightPay, c.otStraightPayUsd)}</td>
+        <td class="num">${fmtMoneyUsdFirst(c.otStraightPayUsd, c.otStraightPay)}</td>
       </tr>
       <tr>
         <td><span class="money-usd">Overtime Premium (×0.5)</span></td>
         <td class="num">${fmtUsd(otPremiumRateUsd)}</td>
         <td class="num">${c.otPremiumHours}h</td>
         <td class="num">-</td>
-        <td class="num">${fmtMoney(c.otPremiumPay, c.otPremiumPayUsd)}</td>
+        <td class="num">${fmtMoneyUsdFirst(c.otPremiumPayUsd, c.otPremiumPay)}</td>
       </tr>
       <tr>
         <td><span class="money-usd">Fringe</span></td>
         <td class="num">${fmtUsd(log.benefitRateUsd)}</td>
         <td class="num">${c.fringeHours}h</td>
         <td class="num">-</td>
-        <td class="num">${fmtMoney(c.fringePay, c.fringePayUsd)}</td>
+        <td class="num">${fmtMoneyUsdFirst(c.fringePayUsd, c.fringePay)}</td>
       </tr>`);
       return;
     }
@@ -1495,13 +1506,13 @@ function renderPayslip() {
   const total = regularPay + otStraightPay + otPremiumPay + fringePay;
 
   document.getElementById('payslip-earnings-tbody').innerHTML = `
-    <tr><td>Regular Pay</td><td class="num">${regularHoursSum}h</td><td class="num">${fmtUsd2(avgRegularRate)}/h</td><td class="num">${fmtMoney2(regularPay, regularPayUsd)}</td></tr>
-    <tr><td>Overtime Straight</td><td class="num">${otStraightHoursSum}h</td><td class="num">${fmtUsd2(avgOtStraightRate)}/h</td><td class="num">${fmtMoney2(otStraightPay, otStraightPayUsd)}</td></tr>
-    <tr><td>Overtime Premium (×0.5)</td><td class="num">${otPremiumHoursSum}h</td><td class="num">${fmtUsd2(avgOtPremiumRate)}/h</td><td class="num">${fmtMoney2(otPremiumPay, otPremiumPayUsd)}</td></tr>
-    <tr><td>Fringe</td><td class="num">${fringeHoursSum}h</td><td class="num">${fmtUsd2(avgFringeRate)}/h</td><td class="num">${fmtMoney2(fringePay, fringePayUsd)}</td></tr>
+    <tr><td>Regular Pay</td><td class="num">${regularHoursSum}h</td><td class="num">${fmtUsd2(avgRegularRate)}/h</td><td class="num">${fmtMoneyUsdFirst2(regularPayUsd, regularPay)}</td></tr>
+    <tr><td>Overtime Straight</td><td class="num">${otStraightHoursSum}h</td><td class="num">${fmtUsd2(avgOtStraightRate)}/h</td><td class="num">${fmtMoneyUsdFirst2(otStraightPayUsd, otStraightPay)}</td></tr>
+    <tr><td>Overtime Premium (×0.5)</td><td class="num">${otPremiumHoursSum}h</td><td class="num">${fmtUsd2(avgOtPremiumRate)}/h</td><td class="num">${fmtMoneyUsdFirst2(otPremiumPayUsd, otPremiumPay)}</td></tr>
+    <tr><td>Fringe</td><td class="num">${fringeHoursSum}h</td><td class="num">${fmtUsd2(avgFringeRate)}/h</td><td class="num">${fmtMoneyUsdFirst2(fringePayUsd, fringePay)}</td></tr>
   `;
   document.getElementById('payslip-earnings-tfoot').innerHTML = `
-    <tr style="font-weight:700; border-top:1px solid var(--ink);"><td colspan="3">정산내역 합계</td><td class="num">${fmtMoney2(total, totalUsd)}</td></tr>
+    <tr style="font-weight:700; border-top:1px solid var(--ink);"><td colspan="3">정산내역 합계</td><td class="num">${fmtMoneyUsdFirst2(totalUsd, total)}</td></tr>
   `;
 
   const rentalUsd = Number(adj.rentalFee) || 0;
@@ -1515,24 +1526,24 @@ function renderPayslip() {
   const otherItemRowsHtml = (delBtn) => adj.otherDeductions.map(it => {
     const amtUsd = Number(it.amountUsd) || 0;
     const amtKrw = amtUsd * fxRate;
-    return `<tr><td>${escapeHtml(it.label || '공제금')}</td><td class="num">${fmtMoney2(amtKrw, amtUsd)}</td>${delBtn ? `<td><button class="icon-btn danger" data-del-deduction-item="${it.id}">삭제</button></td>` : ''}</tr>`;
+    return `<tr><td>${escapeHtml(it.label || '공제금')}</td><td class="num">${fmtMoneyUsdFirst2(amtUsd, amtKrw)}</td>${delBtn ? `<td><button class="icon-btn danger" data-del-deduction-item="${it.id}">삭제</button></td>` : ''}</tr>`;
   }).join('');
 
   document.getElementById('payslip-deduction-tbody').innerHTML = `
-    <tr><td>원천징수 (연방소득세 ${adj.taxRate}%)</td><td class="num">${fmtMoney2(taxKrw, taxUsd)}</td><td></td></tr>
-    <tr><td>주간렌탈료</td><td class="num">${fmtMoney2(rentalKrw, rentalUsd)}</td><td></td></tr>
+    <tr><td>원천징수 (연방소득세 ${adj.taxRate}%)</td><td class="num">${fmtMoneyUsdFirst2(taxUsd, taxKrw)}</td><td></td></tr>
+    <tr><td>주간렌탈료</td><td class="num">${fmtMoneyUsdFirst2(rentalUsd, rentalKrw)}</td><td></td></tr>
     ${otherItemRowsHtml(true)}
   `;
   document.getElementById('payslip-deduction-tfoot').innerHTML = `
-    <tr style="font-weight:700; border-top:1px solid var(--ink);"><td>공제금 합계</td><td class="num">${fmtMoney2(deductionTotalKrw, deductionTotalUsd)}</td><td></td></tr>
+    <tr style="font-weight:700; border-top:1px solid var(--ink);"><td>공제금 합계</td><td class="num">${fmtMoneyUsdFirst2(deductionTotalUsd, deductionTotalKrw)}</td><td></td></tr>
   `;
 
   const netUsd = totalUsd - deductionTotalUsd;
   const netKrw = total - deductionTotalKrw;
 
-  document.getElementById('payslip-gross').innerHTML = fmtMoney2(total, totalUsd);
-  document.getElementById('payslip-deduction-total').innerHTML = fmtMoney2(deductionTotalKrw, deductionTotalUsd);
-  document.getElementById('payslip-net').innerHTML = fmtMoney2(netKrw, netUsd);
+  document.getElementById('payslip-gross').innerHTML = fmtMoneyUsdFirst2(totalUsd, total);
+  document.getElementById('payslip-deduction-total').innerHTML = fmtMoneyUsdFirst2(deductionTotalUsd, deductionTotalKrw);
+  document.getElementById('payslip-net').innerHTML = fmtMoneyUsdFirst2(netUsd, netKrw);
 
   // 인쇄/이미지 저장용으로, 입력칸 없이 깔끔한 문서 형태로 똑같은 내용을 한 번 더 그려둬요.
   document.getElementById('payslip-print-view').innerHTML = `
@@ -1544,24 +1555,24 @@ function renderPayslip() {
     <table>
       <thead><tr><th>구분</th><th class="num">시간</th><th class="num">기준액</th><th class="num">금액</th></tr></thead>
       <tbody>
-        <tr><td>Regular Pay</td><td class="num">${regularHoursSum}h</td><td class="num">${fmtUsd2(avgRegularRate)}/h</td><td class="num">${fmtMoney2(regularPay, regularPayUsd)}</td></tr>
-        <tr><td>Overtime Straight</td><td class="num">${otStraightHoursSum}h</td><td class="num">${fmtUsd2(avgOtStraightRate)}/h</td><td class="num">${fmtMoney2(otStraightPay, otStraightPayUsd)}</td></tr>
-        <tr><td>Overtime Premium (×0.5)</td><td class="num">${otPremiumHoursSum}h</td><td class="num">${fmtUsd2(avgOtPremiumRate)}/h</td><td class="num">${fmtMoney2(otPremiumPay, otPremiumPayUsd)}</td></tr>
-        <tr><td>Fringe</td><td class="num">${fringeHoursSum}h</td><td class="num">${fmtUsd2(avgFringeRate)}/h</td><td class="num">${fmtMoney2(fringePay, fringePayUsd)}</td></tr>
+        <tr><td>Regular Pay</td><td class="num">${regularHoursSum}h</td><td class="num">${fmtUsd2(avgRegularRate)}/h</td><td class="num">${fmtMoneyUsdFirst2(regularPayUsd, regularPay)}</td></tr>
+        <tr><td>Overtime Straight</td><td class="num">${otStraightHoursSum}h</td><td class="num">${fmtUsd2(avgOtStraightRate)}/h</td><td class="num">${fmtMoneyUsdFirst2(otStraightPayUsd, otStraightPay)}</td></tr>
+        <tr><td>Overtime Premium (×0.5)</td><td class="num">${otPremiumHoursSum}h</td><td class="num">${fmtUsd2(avgOtPremiumRate)}/h</td><td class="num">${fmtMoneyUsdFirst2(otPremiumPayUsd, otPremiumPay)}</td></tr>
+        <tr><td>Fringe</td><td class="num">${fringeHoursSum}h</td><td class="num">${fmtUsd2(avgFringeRate)}/h</td><td class="num">${fmtMoneyUsdFirst2(fringePayUsd, fringePay)}</td></tr>
       </tbody>
-      <tfoot><tr><td colspan="3">정산내역 합계</td><td class="num">${fmtMoney2(total, totalUsd)}</td></tr></tfoot>
+      <tfoot><tr><td colspan="3">정산내역 합계</td><td class="num">${fmtMoneyUsdFirst2(totalUsd, total)}</td></tr></tfoot>
     </table>
     <h3>공제금</h3>
     <table>
       <thead><tr><th>공제 항목</th><th class="num">금액</th></tr></thead>
       <tbody>
-        <tr><td>원천징수 (연방소득세 ${adj.taxRate}%)</td><td class="num">${fmtMoney2(taxKrw, taxUsd)}</td></tr>
-        <tr><td>주간렌탈료</td><td class="num">${fmtMoney2(rentalKrw, rentalUsd)}</td></tr>
+        <tr><td>원천징수 (연방소득세 ${adj.taxRate}%)</td><td class="num">${fmtMoneyUsdFirst2(taxUsd, taxKrw)}</td></tr>
+        <tr><td>주간렌탈료</td><td class="num">${fmtMoneyUsdFirst2(rentalUsd, rentalKrw)}</td></tr>
         ${otherItemRowsHtml(false)}
       </tbody>
-      <tfoot><tr><td>공제금 합계</td><td class="num">${fmtMoney2(deductionTotalKrw, deductionTotalUsd)}</td></tr></tfoot>
+      <tfoot><tr><td>공제금 합계</td><td class="num">${fmtMoneyUsdFirst2(deductionTotalUsd, deductionTotalKrw)}</td></tr></tfoot>
     </table>
-    <div class="pp-net">수령액 ${fmtMoney2(netKrw, netUsd)}</div>
+    <div class="pp-net">수령액 ${fmtMoneyUsdFirst2(netUsd, netKrw)}</div>
   `;
 
   // 급여명세서 탭을 보고 있을 때만 미리 이미지를 만들어둬요(다른 탭에서는 불필요한 작업이라 생략).
@@ -2216,35 +2227,35 @@ function renderCalDetail() {
             <td class="num">${fmtTimeRange(log.workStart, log.workEnd)}</td>
             <td class="num">${fmtUsd(baseRate)}/h</td>
             <td class="num">${c.regularHours}h</td>
-            <td class="num">${fmtMoney(c.regularPay, c.regularPayUsd)}</td>
+            <td class="num">${fmtMoneyUsdFirst(c.regularPayUsd, c.regularPay)}</td>
           </tr>
           <tr${highlight}>
             <td><span class="money-usd">Overtime Straight</span></td>
             <td class="num">-</td>
             <td class="num">${fmtUsd(baseRate)}/h</td>
             <td class="num">${c.otStraightHours}h</td>
-            <td class="num">${fmtMoney(c.otStraightPay, c.otStraightPayUsd)}</td>
+            <td class="num">${fmtMoneyUsdFirst(c.otStraightPayUsd, c.otStraightPay)}</td>
           </tr>
           <tr${highlight}>
             <td><span class="money-usd">Overtime Premium (×0.5)</span></td>
             <td class="num">-</td>
             <td class="num">${fmtUsd(otPremiumRateUsd)}/h</td>
             <td class="num">${c.otPremiumHours}h</td>
-            <td class="num">${fmtMoney(c.otPremiumPay, c.otPremiumPayUsd)}</td>
+            <td class="num">${fmtMoneyUsdFirst(c.otPremiumPayUsd, c.otPremiumPay)}</td>
           </tr>
           <tr${highlight}>
             <td><span class="money-usd">Fringe</span></td>
             <td class="num">-</td>
             <td class="num">${fmtUsd(log.benefitRateUsd)}/h</td>
             <td class="num">${c.fringeHours}h</td>
-            <td class="num">${fmtMoney(c.fringePay, c.fringePayUsd)}</td>
+            <td class="num">${fmtMoneyUsdFirst(c.fringePayUsd, c.fringePay)}</td>
           </tr>
           <tr${highlight} style="font-weight:700; border-top:1px solid var(--line);">
             <td>합계</td>
             <td class="num">-</td>
             <td class="num">-</td>
             <td class="num">-</td>
-            <td class="num">${fmtMoney(c.total, c.totalUsd)}</td>
+            <td class="num">${fmtMoneyUsdFirst(c.totalUsd, c.total)}</td>
           </tr>`;
       }
 
