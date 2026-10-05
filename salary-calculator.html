@@ -474,6 +474,10 @@
                 <span class="time-range-sep">~</span>
                 <select id="cal-usd-work-end"></select>
               </div>
+              <div class="field" style="margin-top:6px; margin-bottom:0;">
+                <div class="field-lbl">공제 시간</div>
+                <input type="number" id="cal-usd-deduct-hours" min="0" step="0.25" value="0">
+              </div>
               <label class="checkbox-row"><input type="checkbox" id="cal-usd-work-off"> 휴무</label>
             </div>
           </div>
@@ -1032,10 +1036,10 @@ function timeRangeHours(start, end) {
   return endHour - startHour;
 }
 
-// 근무시간이 5시간을 초과하면 휴게시간 1시간을 공제해요(초과근무시간에는 적용 안 함).
-function computeRegularHoursFromRange(start, end) {
+// 근무시간(시작~종료)에서 공제시간(휴게 등, 수기 입력)만큼을 빼요.
+function computeRegularHoursFromRange(start, end, deductHours) {
   const hours = timeRangeHours(start, end);
-  return hours > 5 ? Math.max(0, hours - 1) : hours;
+  return Math.max(0, hours - (Number(deductHours) || 0));
 }
 
 // 연장근무는 30분 단위(예: 18.5 = 18시 30분)로 입력될 수 있어서, 시각 하나를
@@ -2322,6 +2326,7 @@ function startEditLog(log) {
     workOffInput.checked = log.dayStatus === 'off';
     document.getElementById('cal-usd-work-start').value = log.workStart || '';
     document.getElementById('cal-usd-work-end').value = log.workEnd || '';
+    document.getElementById('cal-usd-deduct-hours').value = log.deductHours || 0;
     workOffInput.dispatchEvent(new Event('change'));
     if (Number(log.otHours) > 0) {
       showToast(`이 날짜엔 예전 방식으로 입력된 초과근무 ${log.otHours}시간이 별도로 남아있어요. 수정해도 그대로 유지돼요.`, 'info', 6000);
@@ -2404,9 +2409,10 @@ function readRegularEntry(scopeKey) {
     const isOff = document.getElementById('cal-usd-work-off').checked;
     const workStart = document.getElementById('cal-usd-work-start').value;
     const workEnd = document.getElementById('cal-usd-work-end').value;
+    const deductHours = Number(document.getElementById('cal-usd-deduct-hours').value) || 0;
     const dayStatus = isOff ? 'off' : 'work';
-    const regularHours = isOff ? 0 : computeRegularHoursFromRange(workStart, workEnd);
-    return { payType, regularHours, dayStatus, hasRegular: isOff || (workStart !== '' && workEnd !== ''), workStart, workEnd };
+    const regularHours = isOff ? 0 : computeRegularHoursFromRange(workStart, workEnd, deductHours);
+    return { payType, regularHours, dayStatus, hasRegular: isOff || (workStart !== '' && workEnd !== ''), workStart, workEnd, deductHours };
   }
   const raw = document.getElementById(cfg.regularInput).value;
   return { payType, regularHours: Number(raw) || 0, dayStatus: undefined, hasRegular: raw !== '' };
@@ -2627,6 +2633,7 @@ function resetCalAddForm() {
   document.getElementById('cal-usd-work-end').value = '';
   document.getElementById('cal-usd-work-start').disabled = false;
   document.getElementById('cal-usd-work-end').disabled = false;
+  document.getElementById('cal-usd-deduct-hours').value = '0';
   document.getElementById('cal-add-ot').value = '';
   document.getElementById('cal-add-ot-daily').value = '0';
   document.getElementById('cal-add-memo').value = '';
@@ -2658,7 +2665,7 @@ document.getElementById('cal-add-btn').addEventListener('click', () => {
     const legacyOtHours = existingLog ? (Number(existingLog.otHours) || 0) : otEntry.otHours;
     const legacyOtStart = existingLog ? (existingLog.otStart || '') : otEntry.otStart;
     const legacyOtEnd = existingLog ? (existingLog.otEnd || '') : otEntry.otEnd;
-    logBase = { payType: entry.payType, dailyRateUsd, benefitRateUsd, regularHours: entry.regularHours, dayStatus: entry.dayStatus, otHours: legacyOtHours, workStart: entry.workStart, workEnd: entry.workEnd, otStart: legacyOtStart, otEnd: legacyOtEnd };
+    logBase = { payType: entry.payType, dailyRateUsd, benefitRateUsd, regularHours: entry.regularHours, dayStatus: entry.dayStatus, otHours: legacyOtHours, workStart: entry.workStart, workEnd: entry.workEnd, deductHours: entry.deductHours, otStart: legacyOtStart, otEnd: legacyOtEnd };
     rememberRate(entry.payType, null, null, { dailyRateUsd, benefitRateUsd });
   } else {
     const rate = Number(document.getElementById('cal-add-rate').value) || 0;
