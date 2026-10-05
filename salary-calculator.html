@@ -410,10 +410,8 @@
     </div>
     <div class="cal-legend" style="margin-top:2px;">
       <span style="color:var(--ink-faint);">미국급여:</span>
-      <span><span class="dot" style="background:#8a94ab;"></span>1~2H</span>
-      <span><span class="dot" style="background:#ff9f1c;"></span>3~4H</span>
-      <span><span class="dot" style="background:#ef4a5f;"></span>5~6H</span>
-      <span><span class="dot" style="background:#8b5cf6;"></span>7~8H+</span>
+      <span><span class="dot" style="background:#8a94ab;"></span>Regular</span>
+      <span><span class="dot" style="background:#ff9f1c;"></span>Overtime</span>
       <span><span class="dot" style="background:#3b5bfd;"></span>시급제 근무시간</span>
     </div>
 
@@ -797,14 +795,6 @@ function workTierClass(n) {
   if (n < 1 - 0.001) return 'tier-low';
   if (n <= 1 + 0.001) return 'tier-normal';
   if (n <= 2 + 0.001) return 'tier-high';
-  return 'tier-vhigh';
-}
-
-// 미국급여의 근무시간/초과근무시간 색상 구분 (1~2h/3~4h/5~6h/7~8h+, 기존 4색을 그대로 재사용)
-function hourTierClass(h) {
-  if (h <= 2 + 0.001) return 'tier-low';
-  if (h <= 4 + 0.001) return 'tier-normal';
-  if (h <= 6 + 0.001) return 'tier-high';
   return 'tier-vhigh';
 }
 
@@ -2109,11 +2099,12 @@ function renderCalendar() {
         if (dailyAmount > 0) badges.push(`<div class="cal-work-badge ${workTierClass(dailyAmount)}">${dailyAmount}</div>`);
 
         // 미국급여(usd_daily)는 그 주(월~토) 누적 40시간 기준으로 자동 계산된 Regular/Overtime
-        // 시간을 배지로 보여줘요(날짜별로 직접 태그하던 방식에서 변경됨).
+        // 시간을 배지로 보여줘요(날짜별로 직접 태그하던 방식에서 변경됨). 시간 많고 적음과
+        // 상관없이 Regular는 항상 회색, Overtime은 항상 주황색으로 고정 표시해요.
         const usdDayAmount = usdLogs.reduce((s, l) => s + computeLog(l).regularHours, 0);
         const usdOtAmount = usdLogs.reduce((s, l) => s + computeLog(l).otStraightHours, 0);
-        if (usdDayAmount > 0) badges.push(`<div class="cal-work-badge ${hourTierClass(usdDayAmount)}">${usdDayAmount}H</div>`);
-        if (usdOtAmount > 0) badges.push(`<div class="cal-work-badge ${hourTierClass(usdOtAmount)}">${usdOtAmount}H</div>`);
+        if (usdDayAmount > 0) badges.push(`<div class="cal-work-badge tier-low">${usdDayAmount}H</div>`);
+        if (usdOtAmount > 0) badges.push(`<div class="cal-work-badge tier-normal">${usdOtAmount}H</div>`);
 
         const hourlyTotal = hourlyLogs.reduce((s, l) => s + Number(l.regularHours || 0) + Number(l.otHours || 0), 0);
         if (hourlyTotal > 0) badges.push(`<div class="cal-work-badge tier-hourly">${hourlyTotal}H</div>`);
