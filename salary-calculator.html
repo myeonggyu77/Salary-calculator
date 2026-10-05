@@ -1215,6 +1215,7 @@ function renderLogsTable() {
       const idCells = `<td rowspan="4"><input type="checkbox" class="log-check" data-id="${log.id}"></td>
       <td rowspan="4" class="num">${fmtWeekLabel(log.date)}</td>
       <td rowspan="4">${log.date || ''}</td>`;
+      const workTimeCell = `<td rowspan="4" class="num">${fmtTimeRange(log.workStart, log.workEnd)}</td>`;
       const totalCell = `<td rowspan="4" class="num" style="font-weight:700;">${fmtMoney(c.total, c.totalUsd)}</td>`;
       const actionsCell = `<td rowspan="4" style="white-space:nowrap; vertical-align:top;"><div class="stacked-actions"><button class="icon-btn" data-edit="${log.id}">수정</button><button class="icon-btn danger" data-del="${log.id}">삭제</button></div></td>`;
 
@@ -1223,7 +1224,7 @@ function renderLogsTable() {
         <td><span class="money-usd">Regular Pay</span></td>
         <td class="num">${fmtUsd(baseRate)}</td>
         <td class="num">${c.regularHours}h</td>
-        <td class="num">${fmtTimeRange(log.workStart, log.workEnd)}</td>
+        ${workTimeCell}
         <td class="num">${fmtMoney(c.regularPay, c.regularPayUsd)}</td>
         ${totalCell}
         ${actionsCell}
@@ -1232,21 +1233,18 @@ function renderLogsTable() {
         <td><span class="money-usd">Overtime Straight</span></td>
         <td class="num">${fmtUsd(baseRate)}</td>
         <td class="num">${c.otStraightHours}h</td>
-        <td class="num">-</td>
         <td class="num">${fmtMoney(c.otStraightPay, c.otStraightPayUsd)}</td>
       </tr>
       <tr>
         <td><span class="money-usd">Overtime Premium (×0.5)</span></td>
         <td class="num">${fmtUsd(otPremiumRateUsd)}</td>
         <td class="num">${c.otPremiumHours}h</td>
-        <td class="num">-</td>
         <td class="num">${fmtMoney(c.otPremiumPay, c.otPremiumPayUsd)}</td>
       </tr>
       <tr>
         <td><span class="money-usd">Fringe</span></td>
         <td class="num">${fmtUsd(log.benefitRateUsd)}</td>
         <td class="num">${c.fringeHours}h</td>
-        <td class="num">-</td>
         <td class="num">${fmtMoney(c.fringePay, c.fringePayUsd)}</td>
       </tr>`);
       return;
