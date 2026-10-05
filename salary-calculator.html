@@ -476,7 +476,7 @@
               </div>
               <div class="field" style="margin-top:6px; margin-bottom:0;">
                 <div class="field-lbl">공제 시간</div>
-                <input type="number" id="cal-usd-deduct-hours" min="0" step="0.25" value="0">
+                <select id="cal-usd-deduct-hours"></select>
               </div>
               <label class="checkbox-row"><input type="checkbox" id="cal-usd-work-off"> 휴무</label>
             </div>
@@ -2391,6 +2391,23 @@ function hourSelectOptionsHtml(halfHour) {
 ['cal-usd-work-start', 'cal-usd-work-end'].forEach(id => {
   document.getElementById(id).innerHTML = hourSelectOptionsHtml(true);
 });
+
+// 공제 시간(휴게 등)도 30분 단위(0분, 30분, 1시간, 1시간 30분, ...)로만 선택해요.
+function deductHoursOptionsHtml() {
+  let html = '';
+  for (let h = 0; h <= 4; h += 0.5) {
+    const wholeHours = Math.floor(h);
+    const minutes = Math.round((h - wholeHours) * 60);
+    let label;
+    if (wholeHours === 0 && minutes === 0) label = '0분';
+    else if (wholeHours === 0) label = `${minutes}분`;
+    else if (minutes === 0) label = `${wholeHours}시간`;
+    else label = `${wholeHours}시간 ${minutes}분`;
+    html += `<option value="${h}">${label}</option>`;
+  }
+  return html;
+}
+document.getElementById('cal-usd-deduct-hours').innerHTML = deductHoursOptionsHtml();
 
 document.getElementById('cal-usd-work-off').addEventListener('change', (e) => {
   document.getElementById('cal-usd-work-start').disabled = e.target.checked;
