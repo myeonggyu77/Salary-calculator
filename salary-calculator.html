@@ -162,6 +162,7 @@
   .cal-month-summary .item:nth-child(8) .val { font-weight: 700; }
   .cal-month-summary .item .lbl { font-size: 10px; color: var(--ink-faint); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cal-month-summary .item .val { font-family: var(--mono); font-size: 11px; font-weight: 600; line-height: 1.45; word-break: break-word; }
+  .cal-month-summary .item .sub { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); line-height: 1.5; margin-top: 3px; word-break: break-word; }
 
   .dash-chart-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 6px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(18,22,43,0.06); }
   .dash-chart-card h3 { font-size: 13px; font-weight: 600; margin: 0 0 4px; }
@@ -228,6 +229,7 @@
     .kpi .val, .dash-summary .item .val { font-size: 28px; }
     .cal-month-summary .item .val { font-size: 18px; line-height: 1.4; }
     .cal-month-summary .item .lbl { font-size: 12px; margin-bottom: 6px; }
+    .cal-month-summary .item .sub { font-size: 11px; }
     table { font-size: 15px; }
     thead th { padding: 14px; font-size: 13px; }
     tbody td { padding: 15px; }
@@ -427,7 +429,7 @@
       <div class="item"><div class="lbl">이 달 Overtime Premium</div><div class="val" id="cal-month-ot-premium">$0</div></div>
       <div class="item"><div class="lbl">이 달 Fringe</div><div class="val" id="cal-month-fringe">$0</div></div>
       <div class="item"><div class="lbl">이 달 예상 급여</div><div class="val" id="cal-month-pay">$0</div></div>
-      <div class="item"><div class="lbl">이 달 예상 공제금</div><div class="val" id="cal-month-deduction">$0</div></div>
+      <div class="item"><div class="lbl">이 달 예상 공제금</div><div class="val" id="cal-month-deduction">$0</div><div class="sub" id="cal-month-deduction-detail"></div></div>
       <div class="item"><div class="lbl">이 달 예상 수령액</div><div class="val" id="cal-month-net">$0</div></div>
     </div>
     </div>
@@ -2123,8 +2125,12 @@ function renderCalendar() {
   // 이 달 예상 급여 = Regular Pay + Overtime Straight + Overtime Premium + Fringe (미국급여 합계)
   const monthGrossUsd = monthRegularPayUsd + monthOtStraightPayUsd + monthOtPremiumPayUsd + monthFringePayUsd;
   const monthGross = monthRegularPay + monthOtStraightPay + monthOtPremiumPay + monthFringePay;
-  // 이 달 예상 공제금 총액 = 주간렌탈료($552.89) × 이 달 금요일 수 + $2,000(고정)
-  const monthDeductionUsd = 552.89 * monthFridayCount + 2000;
+  // 이 달 예상 공제금 총액 = 주간렌탈료($552.89) × 이 달 금요일 수 + $2,000(고정, 기타)
+  const monthRentalUsd = 552.89 * monthFridayCount;
+  const monthOtherDeductionUsd = 2000;
+  const monthDeductionUsd = monthRentalUsd + monthOtherDeductionUsd;
+  const monthRentalKrw = monthRentalUsd * usdKrwRate;
+  const monthOtherDeductionKrw = monthOtherDeductionUsd * usdKrwRate;
   const monthDeductionKrw = monthDeductionUsd * usdKrwRate;
   const monthNetUsd = monthGrossUsd - monthDeductionUsd;
   const monthNetKrw = monthGross - monthDeductionKrw;
@@ -2136,6 +2142,8 @@ function renderCalendar() {
   document.getElementById('cal-month-fringe').innerHTML = fmtMoney(monthFringePay, monthFringePayUsd);
   document.getElementById('cal-month-pay').innerHTML = fmtMoney(monthGross, monthGrossUsd);
   document.getElementById('cal-month-deduction').innerHTML = fmtMoney(monthDeductionKrw, monthDeductionUsd);
+  document.getElementById('cal-month-deduction-detail').innerHTML =
+    `렌탈료 ${fmtMoney(monthRentalKrw, monthRentalUsd)}<br>기타 ${fmtMoney(monthOtherDeductionKrw, monthOtherDeductionUsd)}`;
   document.getElementById('cal-month-net').innerHTML = fmtMoney(monthNetKrw, monthNetUsd);
 
   document.querySelectorAll('.cal-cell:not(.empty)').forEach(cell => {
