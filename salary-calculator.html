@@ -424,10 +424,10 @@
 
     <div class="cal-month-summary">
       <div class="item"><div class="lbl">이 달 근무일수</div><div class="val" id="cal-month-workdays">0일</div></div>
-      <div class="item"><div class="lbl">이 달 Regular Pay</div><div class="val" id="cal-month-regular">$0</div></div>
-      <div class="item"><div class="lbl">이 달 Overtime Straight</div><div class="val" id="cal-month-ot-straight">$0</div></div>
-      <div class="item"><div class="lbl">이 달 Overtime Premium</div><div class="val" id="cal-month-ot-premium">$0</div></div>
-      <div class="item"><div class="lbl">이 달 Fringe</div><div class="val" id="cal-month-fringe">$0</div></div>
+      <div class="item"><div class="lbl">이 달 Regular Pay</div><div class="val" id="cal-month-regular">$0</div><div class="sub" id="cal-month-regular-hours">0h</div></div>
+      <div class="item"><div class="lbl">이 달 Overtime Straight</div><div class="val" id="cal-month-ot-straight">$0</div><div class="sub" id="cal-month-ot-straight-hours">0h</div></div>
+      <div class="item"><div class="lbl">이 달 Overtime Premium</div><div class="val" id="cal-month-ot-premium">$0</div><div class="sub" id="cal-month-ot-premium-hours">0h</div></div>
+      <div class="item"><div class="lbl">이 달 Fringe</div><div class="val" id="cal-month-fringe">$0</div><div class="sub" id="cal-month-fringe-hours">0h</div></div>
       <div class="item"><div class="lbl">이 달 예상 급여</div><div class="val" id="cal-month-pay">$0</div></div>
       <div class="item"><div class="lbl">이 달 예상 공제금</div><div class="val" id="cal-month-deduction">$0</div><div class="sub" id="cal-month-deduction-detail"></div></div>
       <div class="item"><div class="lbl">이 달 예상 수령액</div><div class="val" id="cal-month-net">$0</div></div>
@@ -2050,10 +2050,10 @@ function renderCalendar() {
   // 이 달 현황 카드는 미국급여(usd_daily) 기준으로 집계해요(Regular Pay/Overtime
   // Straight/Overtime Premium/Fringe와 예상 공제금·수령액이 전부 미국급여 전용 개념이라서).
   let monthUsdWorkDays = 0;
-  let monthRegularPay = 0, monthRegularPayUsd = 0;
-  let monthOtStraightPay = 0, monthOtStraightPayUsd = 0;
-  let monthOtPremiumPay = 0, monthOtPremiumPayUsd = 0;
-  let monthFringePay = 0, monthFringePayUsd = 0;
+  let monthRegularPay = 0, monthRegularPayUsd = 0, monthRegularHours = 0;
+  let monthOtStraightPay = 0, monthOtStraightPayUsd = 0, monthOtStraightHours = 0;
+  let monthOtPremiumPay = 0, monthOtPremiumPayUsd = 0, monthOtPremiumHours = 0;
+  let monthFringePay = 0, monthFringePayUsd = 0, monthFringeHours = 0;
   let monthFridayCount = 0;
 
   for (let d = 1; d <= daysInMonth; d++) {
@@ -2087,10 +2087,10 @@ function renderCalendar() {
         if (!usdAllOff) monthUsdWorkDays += 1;
         usdLogs.forEach(log => {
           const c = computeLog(log);
-          monthRegularPay += c.regularPay; monthRegularPayUsd += c.regularPayUsd;
-          monthOtStraightPay += c.otStraightPay; monthOtStraightPayUsd += c.otStraightPayUsd;
-          monthOtPremiumPay += c.otPremiumPay; monthOtPremiumPayUsd += c.otPremiumPayUsd;
-          monthFringePay += c.fringePay; monthFringePayUsd += c.fringePayUsd;
+          monthRegularPay += c.regularPay; monthRegularPayUsd += c.regularPayUsd; monthRegularHours += c.regularHours;
+          monthOtStraightPay += c.otStraightPay; monthOtStraightPayUsd += c.otStraightPayUsd; monthOtStraightHours += c.otStraightHours;
+          monthOtPremiumPay += c.otPremiumPay; monthOtPremiumPayUsd += c.otPremiumPayUsd; monthOtPremiumHours += c.otPremiumHours;
+          monthFringePay += c.fringePay; monthFringePayUsd += c.fringePayUsd; monthFringeHours += c.fringeHours;
         });
       }
 
@@ -2137,9 +2137,13 @@ function renderCalendar() {
 
   document.getElementById('cal-month-workdays').textContent = fmtTrimNum(monthUsdWorkDays) + '일';
   document.getElementById('cal-month-regular').innerHTML = fmtMoney(monthRegularPay, monthRegularPayUsd);
+  document.getElementById('cal-month-regular-hours').textContent = fmtTrimNum(monthRegularHours) + 'h';
   document.getElementById('cal-month-ot-straight').innerHTML = fmtMoney(monthOtStraightPay, monthOtStraightPayUsd);
+  document.getElementById('cal-month-ot-straight-hours').textContent = fmtTrimNum(monthOtStraightHours) + 'h';
   document.getElementById('cal-month-ot-premium').innerHTML = fmtMoney(monthOtPremiumPay, monthOtPremiumPayUsd);
+  document.getElementById('cal-month-ot-premium-hours').textContent = fmtTrimNum(monthOtPremiumHours) + 'h';
   document.getElementById('cal-month-fringe').innerHTML = fmtMoney(monthFringePay, monthFringePayUsd);
+  document.getElementById('cal-month-fringe-hours').textContent = fmtTrimNum(monthFringeHours) + 'h';
   document.getElementById('cal-month-pay').innerHTML = fmtMoney(monthGross, monthGrossUsd);
   document.getElementById('cal-month-deduction').innerHTML = fmtMoney(monthDeductionKrw, monthDeductionUsd);
   document.getElementById('cal-month-deduction-detail').innerHTML =
