@@ -148,13 +148,18 @@
   .cal-pay { font-size: 9px; line-height: 1.25; font-family: var(--mono); color: var(--ink-soft); margin-top: 3px; text-align: center; max-width: 100%; }
   .cal-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; font-size: 11px; color: var(--ink-soft); }
   .cal-legend .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
-  .cal-month-summary { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-top: 14px; box-shadow: 0 1px 3px rgba(18,22,43,0.06); }
-  .cal-month-summary .item { flex: 1; min-width: 0; background: var(--paper-raised); padding: 10px 6px; border-top: 3px solid var(--line); }
+  .cal-month-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-top: 14px; box-shadow: 0 1px 3px rgba(18,22,43,0.06); }
+  .cal-month-summary .item { min-width: 0; background: var(--paper-raised); padding: 10px 6px; border-top: 3px solid var(--line); }
   .cal-month-summary .item:nth-child(1) { border-top-color: #8a94ab; }
-  .cal-month-summary .item:nth-child(2) { border-top-color: #3b5bfd; }
+  .cal-month-summary .item:nth-child(2) { border-top-color: #8a94ab; }
   .cal-month-summary .item:nth-child(3) { border-top-color: #ff9f1c; }
-  .cal-month-summary .item:nth-child(4) { border-top-color: var(--ink); }
-  .cal-month-summary .item:nth-child(4) .val { font-weight: 700; }
+  .cal-month-summary .item:nth-child(4) { border-top-color: #f0b429; }
+  .cal-month-summary .item:nth-child(5) { border-top-color: #3b5bfd; }
+  .cal-month-summary .item:nth-child(6) { border-top-color: var(--ink); }
+  .cal-month-summary .item:nth-child(6) .val { font-weight: 700; }
+  .cal-month-summary .item:nth-child(7) { border-top-color: var(--down); }
+  .cal-month-summary .item:nth-child(8) { border-top-color: var(--ink); }
+  .cal-month-summary .item:nth-child(8) .val { font-weight: 700; }
   .cal-month-summary .item .lbl { font-size: 10px; color: var(--ink-faint); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cal-month-summary .item .val { font-family: var(--mono); font-size: 11px; font-weight: 600; line-height: 1.45; word-break: break-word; }
 
@@ -417,9 +422,13 @@
 
     <div class="cal-month-summary">
       <div class="item"><div class="lbl">이 달 근무일수</div><div class="val" id="cal-month-workdays">0일</div></div>
-      <div class="item"><div class="lbl">이 달 근무시간</div><div class="val" id="cal-month-hours">0h</div></div>
-      <div class="item"><div class="lbl">이 달 연장시간</div><div class="val" id="cal-month-ot">0h</div></div>
-      <div class="item"><div class="lbl">이 달 예상 급여</div><div class="val" id="cal-month-pay">0원</div></div>
+      <div class="item"><div class="lbl">이 달 Regular Pay</div><div class="val" id="cal-month-regular">$0</div></div>
+      <div class="item"><div class="lbl">이 달 Overtime Straight</div><div class="val" id="cal-month-ot-straight">$0</div></div>
+      <div class="item"><div class="lbl">이 달 Overtime Premium</div><div class="val" id="cal-month-ot-premium">$0</div></div>
+      <div class="item"><div class="lbl">이 달 Fringe</div><div class="val" id="cal-month-fringe">$0</div></div>
+      <div class="item"><div class="lbl">이 달 예상 급여</div><div class="val" id="cal-month-pay">$0</div></div>
+      <div class="item"><div class="lbl">이 달 예상 공제금</div><div class="val" id="cal-month-deduction">$0</div></div>
+      <div class="item"><div class="lbl">이 달 예상 수령액</div><div class="val" id="cal-month-net">$0</div></div>
     </div>
     </div>
 
@@ -777,18 +786,6 @@ function fmtMoney2(krw, usd) {
 function fmtMoneyCompact(krw, usd) {
   const usdPart = fmtUsdChart(usd);
   return usdPart ? `${usdPart}<br>${fmtWonChart(krw)}` : fmtWonChart(krw);
-}
-
-// 이 달 현황 카드처럼, 달러·원화를 같은 폰트로 한 줄에 나란히 표기해요.
-function fmtMoneyStackedPlain(krw, usd) {
-  if (amountsHidden) return fmtUsd(usd);
-  return `${fmtUsd(usd)} (${fmtWon(krw)})`;
-}
-
-// 이 달 근무시간/연장시간 카드용: 시간은 첫 줄, 달러(원화)는 둘째 줄에 같은 폰트로 표기해요.
-function fmtHoursPayStacked(hours, krw, usd) {
-  if (amountsHidden) return `${fmtTrimNum(hours)}h`;
-  return `${fmtTrimNum(hours)}h<br>${fmtUsd(usd)} (${fmtWon(krw)})`;
 }
 
 function workTierClass(n) {
@@ -2048,14 +2045,20 @@ function renderCalendar() {
 
   for (let i = 0; i < firstWeekday; i++) html += `<div class="cal-cell empty"></div>`;
 
-  let monthWorkDays = 0, monthWorkHours = 0, monthOtHours = 0;
-  let monthRegularPay = 0, monthRegularPayUsd = 0, monthOtPay = 0, monthOtPayUsd = 0;
-  let monthPayTotal = 0, monthPayTotalUsd = 0;
+  // 이 달 현황 카드는 미국급여(usd_daily) 기준으로 집계해요(Regular Pay/Overtime
+  // Straight/Overtime Premium/Fringe와 예상 공제금·수령액이 전부 미국급여 전용 개념이라서).
+  let monthUsdWorkDays = 0;
+  let monthRegularPay = 0, monthRegularPayUsd = 0;
+  let monthOtStraightPay = 0, monthOtStraightPayUsd = 0;
+  let monthOtPremiumPay = 0, monthOtPremiumPayUsd = 0;
+  let monthFringePay = 0, monthFringePayUsd = 0;
+  let monthFridayCount = 0;
 
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = dateStr(y, m, d);
     const logs = logsByDate[ds] || [];
     const dow = new Date(y, m, d).getDay();
+    if (dow === 5) monthFridayCount += 1;
     const holidayName = krHoliday(ds);
     const dowClass = holidayName ? ' holiday' : dow === 0 ? ' sun' : dow === 6 ? ' sat' : '';
     let classes = 'cal-cell';
@@ -2074,21 +2077,20 @@ function renderCalendar() {
 
       const total = logs.reduce((sum, log) => sum + computeLog(log).total, 0);
       const totalUsd = logs.reduce((sum, log) => sum + computeLog(log).totalUsd, 0);
-      monthPayTotal += total;
-      monthPayTotalUsd += totalUsd;
 
       const allOff = isOffOnlyDay(logs);
-      if (!allOff) monthWorkDays += 1;
 
-      hourlyLogs.concat(usdLogs).forEach(log => {
-        const c = computeLog(log);
-        monthWorkHours += c.regularHours;
-        monthRegularPay += c.regularPay;
-        monthRegularPayUsd += c.regularPayUsd;
-        monthOtHours += c.otStraightHours;
-        monthOtPay += c.otPay;
-        monthOtPayUsd += c.otPayUsd;
-      });
+      if (usdLogs.length > 0) {
+        const usdAllOff = usdLogs.every(l => l.dayStatus === 'off');
+        if (!usdAllOff) monthUsdWorkDays += 1;
+        usdLogs.forEach(log => {
+          const c = computeLog(log);
+          monthRegularPay += c.regularPay; monthRegularPayUsd += c.regularPayUsd;
+          monthOtStraightPay += c.otStraightPay; monthOtStraightPayUsd += c.otStraightPayUsd;
+          monthOtPremiumPay += c.otPremiumPay; monthOtPremiumPayUsd += c.otPremiumPayUsd;
+          monthFringePay += c.fringePay; monthFringePayUsd += c.fringePayUsd;
+        });
+      }
 
       if (allOff) {
         badgeLine = `<div class="cal-badge-row"><div class="cal-work-badge tier-off">휴무</div></div>`;
@@ -2117,10 +2119,24 @@ function renderCalendar() {
   }
 
   document.getElementById('cal-grid').innerHTML = html;
-  document.getElementById('cal-month-workdays').textContent = fmtTrimNum(monthWorkDays) + '일';
-  document.getElementById('cal-month-hours').innerHTML = fmtHoursPayStacked(monthWorkHours, monthRegularPay, monthRegularPayUsd);
-  document.getElementById('cal-month-ot').innerHTML = fmtHoursPayStacked(monthOtHours, monthOtPay, monthOtPayUsd);
-  document.getElementById('cal-month-pay').innerHTML = fmtMoneyStackedPlain(monthPayTotal, monthPayTotalUsd);
+
+  // 이 달 예상 급여 = Regular Pay + Overtime Straight + Overtime Premium + Fringe (미국급여 합계)
+  const monthGrossUsd = monthRegularPayUsd + monthOtStraightPayUsd + monthOtPremiumPayUsd + monthFringePayUsd;
+  const monthGross = monthRegularPay + monthOtStraightPay + monthOtPremiumPay + monthFringePay;
+  // 이 달 예상 공제금 총액 = 주간렌탈료($552.89) × 이 달 금요일 수 + $2,000(고정)
+  const monthDeductionUsd = 552.89 * monthFridayCount + 2000;
+  const monthDeductionKrw = monthDeductionUsd * usdKrwRate;
+  const monthNetUsd = monthGrossUsd - monthDeductionUsd;
+  const monthNetKrw = monthGross - monthDeductionKrw;
+
+  document.getElementById('cal-month-workdays').textContent = fmtTrimNum(monthUsdWorkDays) + '일';
+  document.getElementById('cal-month-regular').innerHTML = fmtMoney(monthRegularPay, monthRegularPayUsd);
+  document.getElementById('cal-month-ot-straight').innerHTML = fmtMoney(monthOtStraightPay, monthOtStraightPayUsd);
+  document.getElementById('cal-month-ot-premium').innerHTML = fmtMoney(monthOtPremiumPay, monthOtPremiumPayUsd);
+  document.getElementById('cal-month-fringe').innerHTML = fmtMoney(monthFringePay, monthFringePayUsd);
+  document.getElementById('cal-month-pay').innerHTML = fmtMoney(monthGross, monthGrossUsd);
+  document.getElementById('cal-month-deduction').innerHTML = fmtMoney(monthDeductionKrw, monthDeductionUsd);
+  document.getElementById('cal-month-net').innerHTML = fmtMoney(monthNetKrw, monthNetUsd);
 
   document.querySelectorAll('.cal-cell:not(.empty)').forEach(cell => {
     cell.addEventListener('click', () => {
