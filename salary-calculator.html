@@ -2127,13 +2127,16 @@ function renderCalendar() {
   // 이 달 예상 급여 = Regular Pay + Overtime Straight + Overtime Premium + Fringe (미국급여 합계)
   const monthGrossUsd = monthRegularPayUsd + monthOtStraightPayUsd + monthOtPremiumPayUsd + monthFringePayUsd;
   const monthGross = monthRegularPay + monthOtStraightPay + monthOtPremiumPay + monthFringePay;
-  // 이 달 예상 공제금 총액 = 주간렌탈료($552.89) × 이 달 금요일 수 + $2,000(고정, 기타)
+  // 이 달 예상 공제금 총액 = 주간렌탈료($552.89) × 이 달 금요일 수 + $2,000(고정, 기타) + 연방소득세(예상급여 탭과 동일한 기본 세율)
   // 미국급여(usd_daily) 근무가 있는 달에만 적용하고, 시급제/일급제만 있는 달은 0으로 처리해요.
+  const monthTaxRate = FORECAST_RATE_DEFAULTS.taxRate;
   const monthRentalUsd = monthUsdWorkDays > 0 ? 552.89 * monthFridayCount : 0;
   const monthOtherDeductionUsd = monthUsdWorkDays > 0 ? 2000 : 0;
-  const monthDeductionUsd = monthRentalUsd + monthOtherDeductionUsd;
+  const monthFederalTaxUsd = monthUsdWorkDays > 0 ? monthGrossUsd * monthTaxRate / 100 : 0;
+  const monthDeductionUsd = monthRentalUsd + monthOtherDeductionUsd + monthFederalTaxUsd;
   const monthRentalKrw = monthRentalUsd * usdKrwRate;
   const monthOtherDeductionKrw = monthOtherDeductionUsd * usdKrwRate;
+  const monthFederalTaxKrw = monthFederalTaxUsd * usdKrwRate;
   const monthDeductionKrw = monthDeductionUsd * usdKrwRate;
   const monthNetUsd = monthGrossUsd - monthDeductionUsd;
   const monthNetKrw = monthGross - monthDeductionKrw;
@@ -2151,7 +2154,7 @@ function renderCalendar() {
   document.getElementById('cal-month-pay').innerHTML = fmtMoney(monthGross, monthGrossUsd);
   document.getElementById('cal-month-deduction').innerHTML = fmtMoney(monthDeductionKrw, monthDeductionUsd);
   document.getElementById('cal-month-deduction-detail').innerHTML =
-    `렌탈료 ${fmtMoney(monthRentalKrw, monthRentalUsd)}<br>기타 ${fmtMoney(monthOtherDeductionKrw, monthOtherDeductionUsd)}`;
+    `렌탈료 ${fmtMoney(monthRentalKrw, monthRentalUsd)}<br>기타 ${fmtMoney(monthOtherDeductionKrw, monthOtherDeductionUsd)}<br>연방소득세(${monthTaxRate}%) ${fmtMoney(monthFederalTaxKrw, monthFederalTaxUsd)}`;
   document.getElementById('cal-month-net').innerHTML = fmtMoney(monthNetKrw, monthNetUsd);
 
   document.querySelectorAll('.cal-cell:not(.empty)').forEach(cell => {
