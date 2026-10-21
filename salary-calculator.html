@@ -2128,8 +2128,9 @@ function renderCalendar() {
   const monthGrossUsd = monthRegularPayUsd + monthOtStraightPayUsd + monthOtPremiumPayUsd + monthFringePayUsd;
   const monthGross = monthRegularPay + monthOtStraightPay + monthOtPremiumPay + monthFringePay;
   // 이 달 예상 공제금 총액 = 주간렌탈료($552.89) × 이 달 금요일 수 + $2,000(고정, 기타)
-  const monthRentalUsd = 552.89 * monthFridayCount;
-  const monthOtherDeductionUsd = 2000;
+  // 미국급여(usd_daily) 근무가 있는 달에만 적용하고, 시급제/일급제만 있는 달은 0으로 처리해요.
+  const monthRentalUsd = monthUsdWorkDays > 0 ? 552.89 * monthFridayCount : 0;
+  const monthOtherDeductionUsd = monthUsdWorkDays > 0 ? 2000 : 0;
   const monthDeductionUsd = monthRentalUsd + monthOtherDeductionUsd;
   const monthRentalKrw = monthRentalUsd * usdKrwRate;
   const monthOtherDeductionKrw = monthOtherDeductionUsd * usdKrwRate;
